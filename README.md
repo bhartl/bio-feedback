@@ -286,7 +286,7 @@ The example program should be run from within the project's `root` directory (*u
 
 *[Note: the usage as library from within the console is WIP.]*
 
-### Jupyter-Demo Notebooks in `/notebooks`
+### Jupyter-Demo Notebooks in `/test/notebooks`
 Please do not commit changes made simple due to execution of the notebooks.
 You can copy (duplicate) a notebook to `<nb-name>.local.ipynb`, the duplicated notebook with `.local` is excluded from git via `/.gitignore`. In that way you can quickly experiment around. 
 
