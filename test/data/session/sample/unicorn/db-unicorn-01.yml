@@ -1,0 +1,32 @@
+meta_data:
+  devices:
+    - &UNICORN {
+      name: "unicorn",
+      class: "Unicorn",
+      location: "biofb.hardware.devices",
+    }
+  setups:
+    - &UNICORN_SUIT {name: "unicorn", devices: [*UNICORN], description: "Unicorn Suit Hybrid Black recording."}
+  locations:
+    - &TL { name: "Test Location", }
+  settings:
+    - &TEST_SESSION_UNICORN { name: "unicorn test session.", description: "Capturing data with the gtec unicorn via the Unicorn Suit Hybrid Black Recorder.", location: *TL }
+  subjects:
+    - &TP {identity: "Test Person",}
+samples:
+  - filename: data/session/sample/unicorn/data-recorder/UnicornRecorder_20210125_144721.csv
+    timestamp: 2021-01-25_14-47-21
+    subject: *TP
+    setting: *TEST_SESSION_UNICORN
+    setup: *UNICORN_SUIT
+    comments:
+      - "Setup test."
+      - Unicor Suit Hybrid Black Recorder Parameters:  {units: (50, muV), notch: 50, bandpass: (1, 60)}
+  - filename: data/session/sample/unicorn/data-recorder/UnicornRecorder_20210125_145138.csv
+    timestamp: 2021-01-25_14-47-21
+    subject: *TP
+    setting: *TEST_SESSION_UNICORN
+    setup: *UNICORN_SUIT
+    comments:
+      - "Setup test."
+      - Unicor Suit Hybrid Black Recorder Parameters:  {units: (50, muV), notch: 50, bandpass: (1, 60)}

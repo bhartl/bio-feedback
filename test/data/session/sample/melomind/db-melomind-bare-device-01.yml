@@ -1,0 +1,47 @@
+meta_data:
+  channels:
+    - &EEG_1 {name: 'EEG_1', sampling_rate: 250, description: "electroencephalogram"}
+    - &EEG_2 {name: 'EEG_2', sampling_rate: 250, description: "electroencephalogram"}
+    - &EEG_Q1 {name: 'Quality_1', sampling_rate: 250, description: "Quality assessment of an EEG channel (true sampling rate is 1 but we chose 250 to match the EEG channel)."}
+    - &EEG_Q2 {name: 'Quality_2', sampling_rate: 250, description: "Quality assessment of an EEG channel (true sampling rate is 1 but we chose 250 to match the EEG channel)."}
+  devices:
+    - &MELO {name: "Melomind", channels: [*EEG_1, *EEG_2, *EEG_Q1, *EEG_Q2]}
+  setups:
+    - &MELO_PURE {name: "Melomind Headset", devices: [*MELO], description: "Signals: two electrodes and two quality values."}
+  controllers:
+    - &TEST_CONTROLLER { name: "Test Controller", description: "Test Controller Description" }
+  locations:
+    - &TL1 { name: "Test Location 1", }
+    - &TL2 { name: "Test Location 2", }
+  settings:
+    - &TEST_SESSION_MELO { name: "Melomind Test", description: "Capturing data with the Melomind headset in an uncontrolled environment.", location: *TL1 }
+    - &CTRL_SESSION_MELO { name: "Melomind Control Session", description: "Capturing data with the Melomind headset in a controlled session.", location: *TL2, controller: *TEST_CONTROLLER }
+  subjects:
+    - &TP {identity: "Test Person",}
+    - &TP2 {identity: "Another Test Person",}
+samples:
+  - filename: data/session/sample/melomind/output-202012181719.dat
+    timestamp: 1608308340.0
+    subject: *TP
+    setting: *CTRL_SESSION_MELO
+    setup: *MELO_PURE
+    comments:
+      - "controlled session with human controller"
+      - "no talking"
+      - "not interactive"
+  - filename: data/session/sample/melomind/output-202012181738.dat
+    timestamp: 1608309480.0
+    subject: *TP2
+    setting: *CTRL_SESSION_MELO
+    setup: *MELO_PURE
+    comments:
+      - "controlled session with human controller"
+      - "talking"
+      - "interactive"
+  - filename: data/session/sample/melomind/output-202101042134.dat
+    timestamp: 1609792440.0
+    subject: *TP
+    setting: *TEST_SESSION_MELO
+    setup: *MELO_PURE
+    comments:
+      - "test session without controller"

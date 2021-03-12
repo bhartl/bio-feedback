@@ -1,0 +1,42 @@
+meta_data:
+  devices:
+    - &MELO {name: "melomind", class: "Melomind", location: "biofb.hardware.devices"}
+  setups:
+    - &MELO_PURE {name: "Melomind Headset", devices: [*MELO], description: "Signals: two electrodes and two quality values."}
+  controllers:
+    - &TEST_CONTROLLER { name: "Test Controller", description: "Test Controller Description" }
+  locations:
+    - &TL1 { name: "Test Location 1", }
+    - &TL2 { name: "Test Location 2", }
+  settings:
+    - &TEST_SESSION_MELO { name: "Melomind Test", description: "Capturing data with the Melomind headset in an uncontrolled environment.", location: *TL1}
+    - &CTRL_SESSION_MELO { name: "Melomind Control Session", description: "Capturing data with the Melomind headset in a controlled session.", location: *TL2, controller: *TEST_CONTROLLER}
+  subjects:
+    - &TP {identity: "Test Person",}
+    - &TP2 {identity: "Another Test Person",}
+samples:
+  - filename: data/session/sample/melomind/output-202012181719.dat
+    timestamp: 1608308340.0
+    subject: *TP
+    setting: *CTRL_SESSION_MELO
+    setup: *MELO_PURE
+    comments:
+      - "controlled session with human controller"
+      - "no talking"
+      - "not interactive"
+  - filename: data/session/sample/melomind/output-202012181738.dat
+    timestamp: 1608309480.0
+    subject: *TP2
+    setting: *CTRL_SESSION_MELO
+    setup: *MELO_PURE
+    comments:
+      - "controlled session with human controller"
+      - "talking"
+      - "interactive"
+  - filename: data/session/sample/melomind/output-202101042134.dat
+    timestamp: 1609792440.0
+    subject: *TP
+    setting: *TEST_SESSION_MELO
+    setup: *MELO_PURE
+    comments:
+      - "test session without controller"

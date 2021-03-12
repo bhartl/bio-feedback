@@ -1,0 +1,11 @@
+.idea/
+venv/
+build/
+**/__pycache__/
+**/.ipynb_checkpoints/
+**.local**
+/data**
+**__pycache__/
+**.egg-info**
+dist/
+**.private**

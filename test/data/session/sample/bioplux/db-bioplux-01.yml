@@ -1,0 +1,33 @@
+meta_data:
+  channels:
+    - &EOG {name: 'EOG', sampling_rate: 500, description: "Horizontal configuration (black right, red left, ref left)."}
+    - &ECG {name: 'ECG', sampling_rate: 500, description: "Lean 1 configuration (ref top, red in, black out)."}
+    - &RESP {name: 'RESP', sampling_rate: 500, description: "Placement between ECG electrodes."}
+    - &EEG {name: 'EEG', sampling_rate: 500, description: "FP1 (red, above left eye), FP2 (black, above right eye), M1 (behind ear above EOG ref)."}
+    - &EDA {name: 'EDA', sampling_rate: 500, description: "Fingers right arm (red index, bottom third limb, black middle, bottom third limb)."}
+    - &EMG {name: 'EMG', sampling_rate: 500, description: "Neck right side."}
+    - &FSW {name: 'FSW', sampling_rate: 500, description: "Footswitch, RAW input."}
+  devices:
+    - &BIOP {
+      name: "bioplux",
+      class: "Bioplux",
+      location: "biofb.hardware.devices",
+      load_data_kwargs: {update_device: True, update_channels: True},
+      channels: [*EOG, *ECG, *RESP, *EEG, *EDA, *EMG, *FSW],
+    }
+  setups:
+    - &BIOP_PURE {name: "biosignalplux", devices: [*BIOP], description: "Full BIOPLUX measurement, no other devices."}
+  locations:
+    - &TL { name: "Test Location", }
+  settings:
+    - &TEST_SESSION { name: "biosignalsplux Test.", description: "Capturing data with the biosignalsplux 8 channel researcher kit.", location: *TL}
+  subjects:
+    - &TP {identity: "Test Person",}
+samples:
+  - filename: data/session/sample/bioplux/opensignals_0007800f315c_2021-01-19_15-03-08_converted.txt
+    timestamp: 2021-01-19_15-03-08
+    subject: *TP
+    setting: *TEST_SESSION
+    setup: *BIOP_PURE
+    comments:
+      - "Setup test."

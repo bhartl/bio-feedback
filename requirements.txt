@@ -1,0 +1,26 @@
+# installation
+setuptools>=51.0.0
+
+# program handling
+argh~=0.26.2
+pyyaml~=5.4.1
+pynput~=1.7.3
+
+# math handling
+numpy~=1.19.5
+scipy~=1.6.1
+
+# data handling
+pandas~=1.2.0
+dropbox~=10.10.0
+datetime~=4.3
+scikit-learn
+matplotlib
+seaborn
+
+# audio manipulation
+simpleaudio~=1.0.4
+pysoundfile
+
+# experimental setup
+pylsl~=1.14.0
