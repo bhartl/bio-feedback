@@ -45,6 +45,7 @@ class TestBioplux(unittest.TestCase):
             self.assertIsInstance(s.setup.devices[0], Bioplux)
             self.assertIsInstance(s.setup['bioplux'], Bioplux)
             self.assertIs(s.setup['bioplux'], s.setup.devices[0])
+            self.assertIs(s.setup, s.setup['bioplux']._setup)
 
         for s in db.samples:
             bp = s.setup.devices[0]
@@ -59,22 +60,6 @@ class TestBioplux(unittest.TestCase):
             if plot:
                 bp.plot(figure_kwargs={'figsize': (17, 10), 'sharex': True})
 
-    def one_device_acquisition(self):
-        import platform
-        import sys
-
-        osDic = {"Darwin": "MacOS",
-                 "Linux": "Linux64",
-                 "Windows": ("Win32", "Win64")}
-        if platform.system() != "Windows":
-            sys.path.append("PLUX-API-Python3/{}/plux.so".format(osDic[platform.system()]))
-        else:
-            if platform.architecture()[0] == '64bit':
-                sys.path.append("PLUX-API-Python3/Win64")
-            else:
-                sys.path.append("PLUX-API-Python3/Win32")
-
-        import plux
 
 if __name__ == '__main__':
     unittest.main()

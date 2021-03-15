@@ -7,6 +7,10 @@ from setuptools import setup, find_packages
 PACKAGES = ['biofb']
 PACKAGES += [f'biofb.{p}' for p in find_packages('./biofb')]  # discover sub-packages in the biofb package
 
+PACKAGE_DATA = {
+    'biosignalsplux_API': ['*plux.so', '*plux.pyd', '*.dll']
+}
+
 
 # Utility function to read the README file.
 def read(filename):
@@ -28,6 +32,8 @@ setup(name='Bio-Feedback',
       author_email='hartl.bene@gmail.com',
       url='https://github.com/bhartl/bio-feedback/',
       packages=PACKAGES,
+      package_data=PACKAGE_DATA,
+      include_package_data=True,
       long_description=read('README.md'),
       platforms='linux',
       classifiers=["Development Status :: 1 - Planning",

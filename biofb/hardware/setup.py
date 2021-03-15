@@ -58,6 +58,10 @@ class Setup(Loadable):
 
     @property
     def devices(self) -> (list, tuple):
+        if self._devices is not None:
+            for d in self._devices:
+                d._setup = self
+
         return self._devices
 
     @devices.setter

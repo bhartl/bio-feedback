@@ -73,6 +73,10 @@ class Device(Loadable):
 
     @property
     def channels(self) -> (list, tuple):
+        if self._channels is not None:
+            for c in self._channels:
+                c._device = self
+
         return self._channels
 
     @channels.setter
@@ -90,9 +94,11 @@ class Device(Loadable):
         if self._data is None:
             if self._setup is not None:
                 if self._setup._sample is not None:
-                    return [device_data
-                            for device, device_data in zip(self._setup.devices, self._setup._sample.data)
-                            if device is self][0]
+                    for device, device_data in zip(self._setup.devices, self._setup._sample.data):
+                        if device is not self:
+                            continue
+
+                        return device_data
 
         return self._data
 
