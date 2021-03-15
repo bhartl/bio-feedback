@@ -8,7 +8,7 @@ PACKAGES = ['biofb']
 PACKAGES += [f'biofb.{p}' for p in find_packages('./biofb')]  # discover sub-packages in the biofb package
 
 PACKAGE_DATA = {
-    'biosignalsplux_API': ['*plux.so', '*plux.pyd', '*.dll']
+    'biosignalsplux_API': ['*PLUX_API*plux.so', '*PLUX_API*plux.pyd', '*PLUX_API*.dll']
 }
 
 
