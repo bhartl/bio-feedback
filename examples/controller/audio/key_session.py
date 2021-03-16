@@ -18,6 +18,8 @@ FREQUENCIES = {
                            ])
 }
 
+DATA_PATH = "data.local/controller/audio/key/"
+
 
 class DummySample(object):
     """ A dummy Sample object required by the KeystrokeSession """
@@ -99,7 +101,7 @@ def main_array(duration: float = 0.5, sample_rate: int = 44100, frequencies=FREQ
 
 
 def main_wav(duration: float = 0.5, sample_rate: int = 44100, frequencies=FREQUENCIES, action_successive=False,
-             path="data.local/controller/audio/key/"):
+             path=DATA_PATH):
     """ Example of a Key-Session which can play musical notes
 
     Adapted `simpleaudio` from https://simpleaudio.readthedocs.io/en/latest/tutorial.html

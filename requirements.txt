@@ -15,7 +15,7 @@ pandas~=1.2.0
 dropbox~=10.10.0
 datetime~=4.3
 scikit-learn
-matplotlib
+matplotlib~=3.4.0rc3
 seaborn
 
 # audio manipulation
@@ -24,3 +24,4 @@ pysoundfile
 
 # experimental setup
 pylsl~=1.14.0
+pyxdf~=1.16.3
