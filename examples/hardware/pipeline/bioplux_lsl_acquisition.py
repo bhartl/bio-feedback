@@ -33,54 +33,57 @@
 from pylsl import StreamInlet
 from pylsl import resolve_stream  # The LSL system allows you to receive signal streams using different identifiers of your choice.
 import numpy as np
+from biofb.signal.visualize import DataMonitor
 
 
 def data_acquisition(stream_inlet, sample_rate=500, chunk_size=1/2, max_steps=10, channels=None):
 
     print(f'start with data-acquisition for {max_steps} sec.:')
 
+    plot_channels = [{'label': f"{l} [{u}]"} for l, u in channels[1:]]
+    plt_kwargs = {
+        'xlim': ((0, max_steps * sample_rate), {}),
+        'xlabel': (('steps', ), {}),
+        'ylabel': (('sensor data', ), {})
+    }
+
     chunk_size = int(sample_rate*chunk_size)
     data, steps = None, None
 
     chunk_count = 0
     pull = True
-    while pull:
-        # get a new sample (you can also omit the timestamp part if you're not interested in it)
-        # sample, timestamp = inlet.pull_chunk(max_samples=chunk_size)
 
-        samples = []
-        while True:
-            sample, timestamp = stream_inlet.pull_sample()
-            samples.append(sample)
+    with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, update_rate=1) as dm:
+        while pull:
+            # get a new sample (you can also omit the timestamp part if you're not interested in it)
+            # sample, timestamp = inlet.pull_chunk(max_samples=chunk_size)
 
-            if len(samples) >= chunk_size:
-                break
+            samples = []
+            while True:
+                sample, timestamp = stream_inlet.pull_sample()
+                samples.append(sample)
 
-        if len(sample) > 0:
+                if len(samples) >= chunk_size:
+                    break
 
-            if data is None:
-                data = np.asarray(samples)
-            else:
-                data = np.concatenate([data, samples])
+            if len(sample) > 0:
 
-            if steps is None:
-                steps = np.arange(0, chunk_size)
-            else:
-                steps = np.concatenate([steps, np.arange(steps[-1], chunk_size)])
+                if data is None:
+                    data = np.asarray(samples)
+                else:
+                    data = np.concatenate([data, samples])
 
-            chunk_count += chunk_size/sample_rate
-            pull = chunk_count < max_steps
+                if steps is None:
+                    steps = np.arange(0, chunk_size)
+                else:
+                    steps = np.concatenate([steps, steps[:chunk_size] + steps[-1] + 1])
 
-            print(f"{timestamp} - chunk {chunk_count}: pulled {len(samples)} samples.")
-            # print(timestamp, sample)
+                chunk_count += chunk_size/sample_rate
+                pull = chunk_count < max_steps
 
-    import matplotlib.pyplot as plt
-
-    labels = None if channels is None else [f"{l} [{u}]" for l, u in channels]
-
-    plt.plot(data[:, 0], data[:, 1:3], label=labels[1:3])
-    plt.legend()
-    plt.show()
+                print(f"{timestamp} - chunk {round(chunk_count)}: pulled {len(samples)} samples.")
+                plot_data = np.concatenate([steps[::10][..., None], data[::10, 1:]], axis=-1).T
+                dm.data = plot_data
 
 
 def get_lsl_metadata(stream_inlet: StreamInlet, ) -> tuple:
@@ -110,7 +113,6 @@ def get_lsl_metadata(stream_inlet: StreamInlet, ) -> tuple:
     channels = stream_info.desc().child("channels").child("channel")
 
     for i in range(stream_meta_data['channel_count']):  # loop through all available channels
-        channel = i + 1  # get the channel number (e.g., 1)
         sensor = channels.child_value("label")   # get the channel type (e.g., ECG, EEG, ...)
         unit = channels.child_value("unit")       # get the channel unit (e.g., mV, ...)
         print(channels)
@@ -121,11 +123,13 @@ def get_lsl_metadata(stream_inlet: StreamInlet, ) -> tuple:
     return stream_meta_data, stream_channels
 
 
-def named_device(stream_name='OpenSignals', chunk_size=1/2, max_steps=10):
+def named_device(stream_name: str = 'OpenSignals', chunk_size: float = 1/5, max_steps: (int, float) = 30):
     """ Receive data from a list of devices via the Lab Streaming Layer (LSL) using pylsl
 
-    :param stream_name: stream name which are to be acquired by `pylsl``.
-
+    :param stream_name: Stream name whose data is to be acquired by `pylsl`` (str, defauls to 'OpenSignals').
+    :param chunk_size: Fraction of the sample_rate (data-points per second) which are grouped
+                       to a chunk during data-acquisition (number, defaults to 1/5)
+    :param max_steps: Time in seconds to perform the measurement (number, defaults to 30).
     """
     print('bio-feedback example:  Lab Streaming Layer (LSL) data acquisition')
 
@@ -150,11 +154,14 @@ def named_device(stream_name='OpenSignals', chunk_size=1/2, max_steps=10):
     return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, max_steps=max_steps, channels=channels)
 
 
-def specific_device(mac="00:07:80:0F:31:5C", chunk_size=1/2, max_steps=10):
+def specific_device(mac="00:07:80:0F:31:5C", chunk_size: float = 1/5, max_steps: (int, float) = 30):
     """ Receive data from a list of devices via the Lab Streaming Layer (LSL) using pylsl
 
-    :param mac: list or tuple of stream names which are to be acquired by `pylsl``.
-
+    :param mac: Mac address of device whose data is to be acquired by `pylsl``
+                (str, defauls to "00:07:80:0F:31:5C", i.e. to the biosignalsplux hub).
+    :param chunk_size: Fraction of the sample_rate (data-points per second) which are grouped
+                       to a chunk during data-acquisition (number, defaults to 1/5)
+    :param max_steps: Time in seconds to perform the measurement (number, defaults to 30).
     """
     print('bio-feedback example:  Lab Streaming Layer (LSL) data acquisition')
 
@@ -170,21 +177,25 @@ def specific_device(mac="00:07:80:0F:31:5C", chunk_size=1/2, max_steps=10):
     for k, v in meta_data.items():
         print(f'{k}:\t{v}')
 
-    for channel_id in sorted(list(channels.keys())):
-        channel = channels[channel_id]
+    for channel_id, channel in enumerate(channels):
         print(f'CH{channel_id} (label / unit):\t{channel}')
 
     print(f'found stream with {inlet.channel_count} channels with data-format ')
     return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, max_steps=max_steps, channels=channels)
 
 
-def hostname_device(hostname="00:07:80:0F:31:5C", chunk_size=1/2, max_steps=10):
-    """ Receive data from a list of devices via the Lab Streaming Layer (LSL) using pylsl
+def hostname_device(chunk_size=1/5, max_steps=10):
+    """ Receive data from the Lab Streaming Layer (LSL) of the current host/computer using pylsl:
+        Data need to be sent/received to/form the Lab Streaming Layer (LSL) from this host
 
-    :param hostname: list or tuple of stream names which are to be acquired by `pylsl``.
-
+        :param chunk_size: Fraction of the sample_rate (data-points per second) which are grouped
+                           to a chunk during data-acquisition (number, defaults to 1/5)
+        :param max_steps: Time in seconds to perform the measurement (number, defaults to 30).
     """
     print('bio-feedback example:  Lab Streaming Layer (LSL) data acquisition')
+
+    import socket
+    hostname = socket.gethostname()
 
     # first resolve an EEG stream on the lab network
     print(f"looking for a hostname `{hostname}` ...")
@@ -198,8 +209,7 @@ def hostname_device(hostname="00:07:80:0F:31:5C", chunk_size=1/2, max_steps=10):
     for k, v in meta_data.items():
         print(f'{k}:\t{v}')
 
-    for channel_id in sorted(list(channels.keys())):
-        channel = channels[channel_id]
+    for channel_id, channel in enumerate(channels):
         print(f'CH{channel_id} (label / unit):\t{channel}')
 
     print(f'found stream with {inlet.channel_count} channels with data-format ')
