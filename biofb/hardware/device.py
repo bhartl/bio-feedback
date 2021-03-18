@@ -1,6 +1,6 @@
 from biofb.io import Loadable
 from biofb.hardware import Channel
-from numpy import loadtxt, ndarray, asarray
+from numpy import loadtxt, ndarray, asarray, concatenate
 import importlib
 from copy import deepcopy
 from os.path import abspath
@@ -32,13 +32,17 @@ class Device(Loadable):
         self._description = None
         self.description = description
 
-        self._data = data
-        self.data = data
-
         self._load_data_kwargs = dict(load_data_kwargs)
 
         self.parameters = parameters
         self._setup = None
+
+        # pipeline handling
+        self._receiver = None
+        self._transmitter = None
+
+        self._data = data
+        self.data = data
 
     def __getitem__(self, key):
         """ Access channel via Channel-instance, name or id """
@@ -90,21 +94,39 @@ class Device(Loadable):
             c._device = self
 
     @property
+    def n_channels(self) -> int:
+        return len(self.channels)
+
+    @property
     def data(self) -> (ndarray, None):
         if self._data is None:
             if self._setup is not None:
-                if self._setup._sample is not None:
-                    for device, device_data in zip(self._setup.devices, self._setup._sample.data):
-                        if device is not self:
-                            continue
-
-                        return device_data
+                return self._setup.get_device_data(device=self)
 
         return self._data
 
     @data.setter
     def data(self, value: (ndarray, None)):
+        if self._data is None:
+            if self._setup is not None:
+                self._setup.set_device_data(data=value, device=self)
+                return
+
         self._data = asarray(value) if value is not None else value
+
+    def append_data(self, value: (ndarray, None)):
+        if value is None:
+            return
+
+        if self._data is None:
+            if self._setup is not None:
+                self._setup.append_device_data(value=value, device=self)
+                return
+
+        data = self.data
+        data = concatenate([data, value]) if data is not None else asarray(value)
+
+        self.data = data
 
     @property
     def sampling_rates(self):
@@ -124,11 +146,10 @@ class Device(Loadable):
 
     @classmethod
     def load(cls, value):
-        value = deepcopy(value)
-
         if isinstance(value, cls):
             return value
 
+        value = deepcopy(value)
         device_cls = value.pop('class', cls)
         device_src = value.pop('location', None)
 
@@ -205,3 +226,78 @@ class Device(Loadable):
             plt.show()
 
         return axes
+
+    @property
+    def receiver(self):
+        return self._receiver
+
+    @receiver.setter
+    def receiver(self, value):
+        from biofb.session import Controller
+        from biofb.hardware.pipeline import Receiver
+
+        if value is None:
+            if self._receiver is not None:
+                del self._receiver
+
+            self._receiver = None
+
+        if isinstance(value, tuple):
+            receiver, kwargs = value
+        else:
+            receiver, kwargs = value, {}
+
+        # update local variables such as "update_channels", "update_device", "update_sampling_rate"
+        # based on load_data_kwargs defined during construction
+        for k, v in self._load_data_kwargs.items():
+            if k in locals():
+                locals()[k] = v
+
+        # prefer directly passed kwargs over load_data_kwargs
+        update_device = kwargs.pop('update_device', locals().get('update_device', True))
+        update_channels = kwargs.pop('update_channels', locals().get('update_channels', True))
+        update_sampling_rate = kwargs.pop('update_sampling_rate', locals().get('update_sampling_rate', True))
+
+        if isinstance(receiver, type):
+            self._receiver = receiver.load(kwargs)
+        else:
+            self._receiver = receiver
+
+        assert isinstance(self._receiver, Receiver) or isinstance(self._receiver, Controller)
+
+        stream_info = self.receiver.stream_info
+
+        if update_device:
+            self.name = stream_info['meta_data']['name']
+
+        if update_channels:
+            assert stream_info['channels'] != []
+
+            channels = []
+            for channel in stream_info['channels']:
+                channels.append(Channel.load(dict(sampling_rate=stream_info['meta_data']['sampling_rate'], **channel)))
+
+            self.channels = channels
+
+        if update_sampling_rate:
+            for c in self.channels:
+                c.sampling_rate = stream_info['meta_data']['sampling_rate']
+
+    def receive_data(self, receiver: (None, Loadable)=None, **receiver_kwargs):
+        """ """
+
+        if receiver is None:
+            assert self.receiver is not None, "No biofb.hardware.pipeline.Receiver specified."
+            receiver = self.receiver
+
+        else:
+            assert self.receiver is None, "Only one receiver can be specified, close connection fist."
+            self.receiver = (receiver, receiver_kwargs)
+            receiver = self.receiver
+
+        assert receiver is not None, "No receiver defined."
+
+        timestamp, data_chunk = receiver.get_chunk()
+        self.append_data(data_chunk)
+
+        return timestamp, data_chunk

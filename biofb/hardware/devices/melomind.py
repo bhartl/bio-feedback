@@ -30,7 +30,7 @@ class Melomind(Device):
         """Constructs a biofb Bioplux instance.
 
         :param name: Name of the device (str, defaults to Bioplux.NAME)
-        :param channels: Channels of Bioplux pipeline (tuple or list, defaults to Bioplux.CHANNELS)
+        :param channels: Channels of Melomind setup (tuple or list, defaults to Melomind.CHANNELS)
         """
 
         if channels is None:

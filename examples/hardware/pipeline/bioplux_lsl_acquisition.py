@@ -1,221 +1,180 @@
-""" We here follow closely the `[How-To] <https://biosignalsplux.discussion.community/post/howto-receive-signal-streams-using-opensignals-amp-python-10287105>`_
-    Receive Signal Streams using OpenSingals and Python by biosignalsplux.
-
-    See also the documentary `<PROJECT HOME>/doc/bioplux/OpenSignals LSL Manual.pdf`
-
-    Further information is provided on the biosignalsplux `github <https://github.com/biosignalsplux/opensignals-samples/tree/master/LSL>`_
-
-    See also the official
-    `example <https://github.com/chkothe/pylsl/blob/master/examples/ReceiveData.py>`_
-    to `ReceiveData.py` with `pylsl`.
-
-    There is 3 different options are presented which can be useful for different use cases which are presented below:
-
-    **Option 1**: Resolve stream from an unspecified OpenSignals stream
-
-    This option can be used when only one instance of OpenSignals is being used with no other machines in the network
-    using OpenSignals & the LSL module. To resolve the stream, specify the name of the stream using pylsl’s
-    resolve_stream function. In the case of OpenSignals, the stream name is set to OpenSignals.
-
-    **Option 2**: Resolve stream from a specific PLUX device via OpenSignals
-
-    This option can be used when multiple devices are being used & you need access to the stream of a specific device,
-    you can use the device’s MAC-address to identify the stream. The MAC-address can be found on the back of the device.
-    Specify the MAC-address of the device using pylsl’s *resolve_stream* function.
-
-    **Option 3**: Resolve stream data from a specific host machine
-
-    This option can be used when multiple machines in your network are running OpenSignals & you need access to the
-    stream of a specific machine. The hostname is the name of the computer streaming the data. Specify the hostname
-    of the host machine using pylsl’s resolve_stream function.
-"""
-
-from pylsl import StreamInlet
-from pylsl import resolve_stream  # The LSL system allows you to receive signal streams using different identifiers of your choice.
-import numpy as np
+from biofb.session import Sample, Subject
+from biofb.hardware import Setup
+from biofb.hardware.devices import Bioplux
+from biofb.hardware.pipeline import LSLReceiver
 from biofb.signal.visualize import DataMonitor
 
 
-def data_acquisition(stream_inlet, sample_rate=500, chunk_size=1/2, max_steps=10, channels=None):
+def data_slice(plot_data, sample_data, t):
+    t_split_interval = None
 
-    print(f'start with data-acquisition for {max_steps} sec.:')
+    if t < len(plot_data):
+        t_interval = t + len(sample_data)
+    else:
+        t_interval = len(sample_data)
 
-    plot_channels = [{'label': f"{l} [{u}]"} for l, u in channels[1:]]
+    if t_interval >= len(plot_data):
+        t_split_interval = t_interval - len(plot_data) + 1
+        t_interval = len(plot_data) - 1
+
+    if t_split_interval is not None:
+        plot_data[:t_split_interval] = sample_data[-t_split_interval:]
+    else:
+        t_split_interval = len(sample_data)
+
+    plot_data[t:t_interval] = sample_data[:t_split_interval]
+
+    return plot_data
+
+
+def device_acquisition(delta_time=10, total_time=1000, skip_samples=1, ylim=1.5):
+    bp = Bioplux(name='bioplux-receiver')
+
+    receiver_cls = LSLReceiver
+    receiver_kwargs = {'stream': 'OpenSignals', 'stream_type': 'name', 'chunk_size': 1/10, 'pull_chunks': True}
+    bp.receiver = (receiver_cls, receiver_kwargs)
+
+    print('LSL stream infos: ')
+    for k, v in bp.receiver.stream_info['meta_data'].items():
+        print(f'  {k}: {v}')
+
+    print()
+    print('LSL channel infos: ')
+    for c in bp.receiver.stream_info['channels']:
+        print(f'  {c}')
+
+    print()
+    print('Mapped Channels: ')
+    plot_channels = []
+    for i, c in enumerate(bp.channels):
+        print(f'  {c}')
+
+        if i > 0:
+            plot_channels.append({'label': f"{c.name} [{c.unit}]"})
+
     plt_kwargs = {
-        'xlim': ((0, max_steps * sample_rate), {}),
-        'xlabel': (('steps', ), {}),
-        'ylabel': (('sensor data', ), {})
+        'xlim': ((0, delta_time * bp.receiver.stream_info['meta_data']['sampling_rate']), {}),
+        'ylim': ((-abs(ylim), abs(ylim)), {}),
+        'xlabel': (('steps',), {}),
+        'ylabel': (('sensor data',), {})
     }
 
-    chunk_size = int(sample_rate*chunk_size)
-    data, steps = None, None
+    with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, figsize=(10, 5)) as dm:
 
-    chunk_count = 0
-    pull = True
+        for i in range(int(total_time/receiver_kwargs['chunk_size'])):
 
-    with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, update_rate=1) as dm:
-        while pull:
-            # get a new sample (you can also omit the timestamp part if you're not interested in it)
-            # sample, timestamp = inlet.pull_chunk(max_samples=chunk_size)
+            # updates device data ...
+            time, samples = bp.receive_data()
 
-            samples = []
-            while True:
-                sample, timestamp = stream_inlet.pull_sample()
-                samples.append(sample)
+            # here we access the device data
+            data_slice = int(delta_time * bp.receiver.stream_info['meta_data']['sampling_rate'])
+            dm.data = bp.data[-data_slice::skip_samples, :].T
 
-                if len(samples) >= chunk_size:
-                    break
-
-            if len(sample) > 0:
-
-                if data is None:
-                    data = np.asarray(samples)
-                else:
-                    data = np.concatenate([data, samples])
-
-                if steps is None:
-                    steps = np.arange(0, chunk_size)
-                else:
-                    steps = np.concatenate([steps, steps[:chunk_size] + steps[-1] + 1])
-
-                chunk_count += chunk_size/sample_rate
-                pull = chunk_count < max_steps
-
-                print(f"{timestamp} - chunk {round(chunk_count)}: pulled {len(samples)} samples.")
-                plot_data = np.concatenate([steps[::10][..., None], data[::10, 1:]], axis=-1).T
-                dm.data = plot_data
+        print("Done with data-acquisition")
 
 
-def get_lsl_metadata(stream_inlet: StreamInlet, ) -> tuple:
-    """ getting LSL-stream meta data of an StreamInlet object
+def setup_acquisition(delta_time=10, total_time=1000, skip_samples=1, ylim=1.5):
+    bp = Bioplux(name='bioplux-receiver')
+    setup = Setup(name='SoloPlux', devices=[bp])
 
-    :return: tuple of (meta_data, channels) dictionaries
-    """
+    receiver_cls = LSLReceiver
+    receiver_kwargs = {'stream': 'OpenSignals', 'stream_type': 'name', 'chunk_size': 1/10, 'pull_chunks': True}
+    bp.receiver = (receiver_cls, receiver_kwargs)
 
-    stream_meta_data = dict()
-    stream_channels = []
+    print('LSL stream infos: ')
+    for k, v in bp.receiver.stream_info['meta_data'].items():
+        print(f'  {k}: {v}')
 
-    # extract general information about the stream
-    stream_info = stream_inlet.info()
+    print()
+    print('LSL channel infos: ')
+    for c in bp.receiver.stream_info['channels']:
+        print(f'  {c}')
 
-    stream_meta_data['name'] = stream_info.name()
-    stream_meta_data['mac'] = stream_info.type()
-    stream_meta_data['host'] = stream_info.hostname()
-    stream_meta_data['channel_count'] = stream_info.channel_count()
-    stream_meta_data['channel_format'] = stream_info.channel_format()
-    stream_meta_data['sample_rate'] = stream_info.nominal_srate()
-    stream_meta_data['source_id'] = stream_info.source_id()
-    stream_meta_data['session_id'] = stream_info.session_id()
-    stream_meta_data['created_at'] = stream_info.created_at()
-    stream_meta_data['version'] = stream_info.version()
+    print()
+    print('Mapped Channels: ')
+    plot_channels = []
+    for i, c in enumerate(bp.channels):
+        print(f'  {c}')
 
-    # extract channel specific information of the stream (using the .desc() method on the stream_info object
-    channels = stream_info.desc().child("channels").child("channel")
+        if i > 0:
+            plot_channels.append({'label': f"{c.name} [{c.unit}]"})
 
-    for i in range(stream_meta_data['channel_count']):  # loop through all available channels
-        sensor = channels.child_value("label")   # get the channel type (e.g., ECG, EEG, ...)
-        unit = channels.child_value("unit")       # get the channel unit (e.g., mV, ...)
-        print(channels)
+    plt_kwargs = {
+        'xlim': ((0, delta_time * bp.receiver.stream_info['meta_data']['sampling_rate']), {}),
+        'ylim': ((-abs(ylim), abs(ylim)), {}),
+        'xlabel': (('steps',), {}),
+        'ylabel': (('sensor data',), {})
+    }
 
-        stream_channels.append((sensor, unit))
-        channels = channels.next_sibling()
+    with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, figsize=(10, 5)) as dm:
 
-    return stream_meta_data, stream_channels
+        for i in range(int(total_time/receiver_kwargs['chunk_size'])):
 
+            # updates setup data ...
+            time, samples = setup.receive_data()[0]
 
-def named_device(stream_name: str = 'OpenSignals', chunk_size: float = 1/5, max_steps: (int, float) = 30):
-    """ Receive data from a list of devices via the Lab Streaming Layer (LSL) using pylsl
+            # here we access setup data
+            data_slice = int(delta_time * bp.receiver.stream_info['meta_data']['sampling_rate'])
+            dm.data = setup.data[0][-data_slice::skip_samples].T
 
-    :param stream_name: Stream name whose data is to be acquired by `pylsl`` (str, defauls to 'OpenSignals').
-    :param chunk_size: Fraction of the sample_rate (data-points per second) which are grouped
-                       to a chunk during data-acquisition (number, defaults to 1/5)
-    :param max_steps: Time in seconds to perform the measurement (number, defaults to 30).
-    """
-    print('bio-feedback example:  Lab Streaming Layer (LSL) data acquisition')
+            # device data is not set
+            assert bp._data is None
 
-    stream_type = 'name'
-
-    # first resolve an EEG stream on the lab network
-    print(f"looking for a stream-{stream_type} `{stream_name}` ...")
-    streams = resolve_stream(stream_type, stream_name)
-
-    # create a new inlet to read from the stream
-    inlet = StreamInlet(streams[0])
-
-    meta_data, channels = get_lsl_metadata(stream_inlet=inlet)
-
-    for k, v in meta_data.items():
-        print(f'{k}:\t{v}')
-
-    for channel_id, channel in enumerate(channels):
-        print(f'CH{channel_id} (label / unit):\t{channel}')
-
-    print(f'found stream with {inlet.channel_count} channels with data-format ')
-    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, max_steps=max_steps, channels=channels)
+        print("Done with data-acquisition")
 
 
-def specific_device(mac="00:07:80:0F:31:5C", chunk_size: float = 1/5, max_steps: (int, float) = 30):
-    """ Receive data from a list of devices via the Lab Streaming Layer (LSL) using pylsl
+def sample_acquisition(delta_time=10, total_time=1000, skip_samples=1, ylim=1.5):
+    bp = Bioplux(name='bioplux-receiver')
+    setup = Setup(name='SoloPlux', devices=[bp])
+    sample = Sample(setup=setup, subject=Subject(identity='id'))
 
-    :param mac: Mac address of device whose data is to be acquired by `pylsl``
-                (str, defauls to "00:07:80:0F:31:5C", i.e. to the biosignalsplux hub).
-    :param chunk_size: Fraction of the sample_rate (data-points per second) which are grouped
-                       to a chunk during data-acquisition (number, defaults to 1/5)
-    :param max_steps: Time in seconds to perform the measurement (number, defaults to 30).
-    """
-    print('bio-feedback example:  Lab Streaming Layer (LSL) data acquisition')
+    receiver_cls = LSLReceiver
+    receiver_kwargs = {'stream': 'OpenSignals', 'stream_type': 'name', 'chunk_size': 1/10, 'pull_chunks': True}
+    bp.receiver = (receiver_cls, receiver_kwargs)
 
-    # first resolve an EEG stream on the lab network
-    print(f"looking for a device (mac) `{mac}` ...")
-    streams = resolve_stream('type', mac)
+    print('LSL stream infos: ')
+    for k, v in bp.receiver.stream_info['meta_data'].items():
+        print(f'  {k}: {v}')
 
-    # create a new inlet to read from the stream
-    inlet = StreamInlet(streams[0])
+    print()
+    print('LSL channel infos: ')
+    for c in bp.receiver.stream_info['channels']:
+        print(f'  {c}')
 
-    meta_data, channels = get_lsl_metadata(stream_inlet=inlet)
+    print()
+    print('Mapped Channels: ')
+    plot_channels = []
+    for i, c in enumerate(bp.channels):
+        print(f'  {c}')
 
-    for k, v in meta_data.items():
-        print(f'{k}:\t{v}')
+        if i > 0:
+            plot_channels.append({'label': f"{c.name} [{c.unit}]"})
 
-    for channel_id, channel in enumerate(channels):
-        print(f'CH{channel_id} (label / unit):\t{channel}')
+    plt_kwargs = {
+        'xlim': ((0, delta_time * bp.receiver.stream_info['meta_data']['sampling_rate']), {}),
+        'ylim': ((-abs(ylim), abs(ylim)), {}),
+        'xlabel': (('steps',), {}),
+        'ylabel': (('sensor data',), {})
+    }
 
-    print(f'found stream with {inlet.channel_count} channels with data-format ')
-    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, max_steps=max_steps, channels=channels)
+    with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, figsize=(10, 5)) as dm:
 
+        for i in range(int(total_time/receiver_kwargs['chunk_size'])):
 
-def hostname_device(chunk_size=1/5, max_steps=10):
-    """ Receive data from the Lab Streaming Layer (LSL) of the current host/computer using pylsl:
-        Data need to be sent/received to/form the Lab Streaming Layer (LSL) from this host
+            # updates sapmle data ...
+            samples = sample.state
 
-        :param chunk_size: Fraction of the sample_rate (data-points per second) which are grouped
-                           to a chunk during data-acquisition (number, defaults to 1/5)
-        :param max_steps: Time in seconds to perform the measurement (number, defaults to 30).
-    """
-    print('bio-feedback example:  Lab Streaming Layer (LSL) data acquisition')
+            # here we acess sample data
+            data_slice = int(delta_time * bp.receiver.stream_info['meta_data']['sampling_rate'])
+            dm.data = sample.data[0][-data_slice::skip_samples].T
 
-    import socket
-    hostname = socket.gethostname()
+            # neither the setup nor the device data are set
+            assert bp._data is None
+            assert setup._data is None
 
-    # first resolve an EEG stream on the lab network
-    print(f"looking for a hostname `{hostname}` ...")
-    streams = resolve_stream('hostname', hostname)
-
-    # create a new inlet to read from the stream
-    inlet = StreamInlet(streams[0])
-
-    meta_data, channels = get_lsl_metadata(stream_inlet=inlet)
-
-    for k, v in meta_data.items():
-        print(f'{k}:\t{v}')
-
-    for channel_id, channel in enumerate(channels):
-        print(f'CH{channel_id} (label / unit):\t{channel}')
-
-    print(f'found stream with {inlet.channel_count} channels with data-format ')
-    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, max_steps=max_steps, channels=channels)
+        print("Done with data-acquisition")
 
 
 if __name__ == '__main__':
     import argh
-    argh.dispatch_commands([named_device, specific_device, hostname_device])
+    argh.dispatch_commands([device_acquisition, setup_acquisition, sample_acquisition])

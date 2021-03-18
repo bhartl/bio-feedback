@@ -36,7 +36,7 @@ class Bioplux(Device):
         """Constructs a biofb Bioplux instance.
 
         :param name: Name of the device (str, defaults to Bioplux.NAME)
-        :param channels: Channels of Bioplux pipeline (tuple or list, defaults to Bioplux.CHANNELS)
+        :param channels: Channels of Bioplux setup (tuple or list, defaults to Bioplux.CHANNELS)
         """
 
         if channels is None:
@@ -78,7 +78,7 @@ class Bioplux(Device):
         device_config = config[device_name]
         device_connection = device_config['device connection']
         device_sampling_rate = device_config['sampling rate']
-        device_resolution = device_config['resolution']  # resolutoin per channel
+        device_resolution = device_config['resolution']  # resolution per channel
         device_firmware_version = device_config['firmware version']
         device_comments = device_config['comments']
         device_keywords = device_config['keywords']

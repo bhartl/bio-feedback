@@ -10,7 +10,7 @@ class Setting(Loadable):
     """
 
     def __init__(self,
-                 name,
+                 name: str = "setting",
                  controller: (Controller, dict, None) = None,
                  location: (Location, dict, None) = None,
                  description: str = "",

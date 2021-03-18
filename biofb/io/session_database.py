@@ -78,7 +78,12 @@ class SessionDatabase(Loadable):
                                     except (TypeError, KeyError):
                                         pass
 
-                return SessionDatabase(**{**db, **kwargs})
+                db = SessionDatabase(**{**db, **kwargs})
+
+                for s in db.samples:
+                    s.load_data()
+
+                return db
         except FileNotFoundError as fnfe:
             if path.isabs(filename):
                 raise fnfe

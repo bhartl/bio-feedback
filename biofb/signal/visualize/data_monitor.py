@@ -23,7 +23,7 @@ class DataMonitor(object):
         >         <do something else>
     """
 
-    def __init__(self, data: list = None, channels: (None, list) = None, update_rate: (int, float) = 1, fig_ax: tuple = (), plt_kwargs={}, clear_axes=True, **fig_kwargs):
+    def __init__(self, data: list = None, channels: (None, list) = None, update_rate: (int, float) = 1, fig_ax: tuple = (), plt_kwargs={}, clear_axes=True, x_offset=True, **fig_kwargs):
         """
         :param data: initial array-like data object to be plotted, a data format of (x, *y) is assumed.
                      For custom use consider overwriting the DataMonitor plot method.
@@ -49,6 +49,7 @@ class DataMonitor(object):
         # channel handling
         self.channels = channels
         self.clear_axes = clear_axes
+        self._x_offset = x_offset
 
         if fig_ax in ((), None):
             self.fig = plt.figure(**fig_kwargs)
@@ -96,7 +97,7 @@ class DataMonitor(object):
         self._show_process = Process(name='animate', target=self.show, args=(self._data_queue, ))
         self._show_process.start()
 
-    def show(self, data_queue: Connection):
+    def show(self, data_queue):
         """ Creates the matplotlib FuncAnimation and creates the plot (blocking)"""
         self._data_queue = data_queue
 
@@ -155,6 +156,9 @@ class DataMonitor(object):
 
         if np.ndim(y) == 1:
             y = [y]
+
+        if self._x_offset:
+            x = np.asarray(x) - x[0]
 
         for i in range(len(y)):
             c = {} if self.channels is None else self.channels[i]

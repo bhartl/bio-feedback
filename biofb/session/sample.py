@@ -155,11 +155,15 @@ class Sample(Loadable):
         )
 
     @property
-    def data(self) -> ndarray:
+    def data(self) -> list:
         if self._data is None:
-            self.load_data()
+            self._data = [None] * self.setup.n_devices
 
         return self._data
+
+    @data.setter
+    def data(self, value: list):
+        self._data = value
 
     @property
     def time(self) -> ndarray:
@@ -201,7 +205,6 @@ class Sample(Loadable):
             for device, filename in zip(devices, filenames):
                 data = device.load_data(filename)
                 device_data.append(data)
-                device.data = data
 
             self._data = device_data
 
@@ -212,5 +215,13 @@ class Sample(Loadable):
         return f"<Sample: Subject {self.subject.identity} at {self.acquisition_datetime}>"
 
     @property
-    def state(self) -> ndarray:
-        raise NotImplementedError('Life-state acquisition to be captured.')
+    def state(self) -> list:
+
+        # receive data from all devices
+        chunk_data = self.setup.receive_data()
+
+        # here data-preprocessing might be done
+        # ...
+
+        # return only values, not time-stamps
+        return [value for time, value in chunk_data]

@@ -7,11 +7,15 @@ from copy import deepcopy
 class Channel(Loadable):
     """Channel used in a bio-controller hardware device."""
 
-    def __init__(self, name: str, sampling_rate: int, label: (str, None) = None, description: str = ""):
+    def __init__(self, name: str, sampling_rate: int, label: (str, None) = None, unit: (None, str) = "",
+                 data_format: str = "float32", description: str = ""):
         """Constructs a bio-controller hardware device `Channel` instance.
 
         :param name: `name` of the `Channel` (str).
         :param sampling_rate: Sampling rate of the `Channel` in Hz (int).
+        :param unit: sampling unit of the channel (str, defaults to "").
+        :param data_format: Data format of the channel, all channels of a
+                            device should have the same data format (str, defaults to "flaot32").
         :param description: description of the device (str, defaults to "").
         """
 
@@ -31,6 +35,12 @@ class Channel(Loadable):
 
         self._device = None
         self._data = None
+
+        self._unit = None
+        self.unit = unit
+
+        self._data_format = None
+        self.data_format = data_format
 
     def to_dict(self):
         return dict(name=self.name,
@@ -90,6 +100,27 @@ class Channel(Loadable):
     @label.setter
     def label(self, value: str):
         self._label = value
+
+    @property
+    def unit(self) -> str:
+        return self._unit
+
+    @unit.setter
+    def unit(self, value: str):
+        self._unit = value
+
+    @property
+    def data_format(self) -> str:
+        return self._data_format
+
+    @data_format.setter
+    def data_format(self, value: str):
+        assert value == "float32", "WIP: specify data format for data-streaming."
+        self._data_format = value
+
+    @property
+    def type(self) -> str:
+        return self.__class__.__name__
 
     @property
     def sampling_rate(self) -> int:
