@@ -5,6 +5,9 @@ from multiprocessing import Process, Queue
 from queue import Empty
 
 
+STREAM_TYPES = ('name', 'type', 'hostname')
+
+
 class Receiver(Loadable, metaclass=ABCMeta):
     """ Abstract Device-Receiver class for data-acquisition
 
@@ -16,11 +19,12 @@ class Receiver(Loadable, metaclass=ABCMeta):
     - get_chunk
     """
 
-    def __init__(self, stream: str, stream_type: str = 'name', **kwargs):
-        """ Construct a Reveiver instance
+    def __init__(self, stream: str, stream_type: str = 'name', verbose: bool = True, **kwargs):
+        """ Construct a Receiver instance
 
         :param stream:
         :param stream_type:
+        :param verbose:
         :param kwargs:
         """
         Loadable.__init__(self, )
@@ -31,14 +35,17 @@ class Receiver(Loadable, metaclass=ABCMeta):
         self._stream_type = None
         self.stream_type = stream_type
 
+        self._verbose = None
+        self.verbose = verbose
+
         self._kwargs = kwargs
 
         self._puller = None
         self._queue = None
 
-    def __del__(self):
+    def close(self):
         if self._puller is not None:
-            self._puller.join()
+            self._puller.terminate()
             self._puller = None
 
         if self._queue is not None:
@@ -52,7 +59,10 @@ class Receiver(Loadable, metaclass=ABCMeta):
             self._queue = None
 
     def to_dict(self):
-        return dict(stream=self.stream, stream_type=self.stream_type, **self._kwargs)
+        return dict(stream=self.stream,
+                    stream_type=self.stream_type,
+                    verbose=self.verbose,
+                    **self._kwargs)
 
     @property
     def stream(self):
@@ -68,8 +78,16 @@ class Receiver(Loadable, metaclass=ABCMeta):
 
     @stream_type.setter
     def stream_type(self, value):
-        assert value in ('name', 'type', 'hostname')
+        assert value in STREAM_TYPES
         self._stream_type = value
+
+    @property
+    def verbose(self) -> bool:
+        return self._verbose
+
+    @verbose.setter
+    def verbose(self, value: bool):
+        self._verbose = value
 
     @property
     @abstractmethod
@@ -98,8 +116,8 @@ class Receiver(Loadable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_chunk(self) -> [ndarray, ndarray]:
-        """ get data chunk
+    def receive_data(self) -> [ndarray, ndarray]:
+        """ get data chunk from the transmission stream
 
         :return (timestamp-ndarray, data-ndarray) tuple for a pulled data chunk from the stream
         """
@@ -113,7 +131,7 @@ class Receiver(Loadable, metaclass=ABCMeta):
 
         try:
             while True:
-                chunk_data = receiver.get_chunk()
+                chunk_data = receiver.receive_data()
                 receiver._queue.put(chunk_data)
         except Exception as ex:
             print(ex)

@@ -1,6 +1,8 @@
 """ The bio-feedback module. """
 
 __all__ = ['signal',
+           'visualize',
+           'pipeline',
            'hardware',
            'session',
            'controller',

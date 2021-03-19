@@ -7,7 +7,7 @@ class GYR(Channel):
         **Note**: GYR-XYZ channels are used by the **g.tec Unicorn**
     """
 
-    def __init__(self, axis: (int, str), *args, **kwargs):
+    def __init__(self, axis: (int, str) = -1, *args, **kwargs):
         """
 
         :param args: Arguments forwarded to `Channel` constructor.
@@ -25,7 +25,7 @@ class GYR(Channel):
 
     @axis.setter
     def axis(self, value: (int, str)):
-        assert value in (0, 1, 2, 'X', 'Y', 'Z')
+        assert value in (-1, 0, 1, 2, 'X', 'Y', 'Z')
         self._axis = value
 
     def to_dict(self):

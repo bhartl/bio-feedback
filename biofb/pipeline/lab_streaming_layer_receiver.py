@@ -1,20 +1,19 @@
 from pylsl import StreamInlet, resolve_stream
-from biofb.hardware.pipeline import Receiver
+from biofb.pipeline import Receiver
 from numpy import ndarray, asarray, empty
 
 
 class LSLReceiver(Receiver):
+    """ Receiver class of data-chunks from the Lab Streaming Layer """
 
     def __init__(self, stream: str, stream_type: str = 'name', chunk_size=1., pull_chunks=False, verbose=True, **kwargs):
-        Receiver.__init__(self, stream=stream, stream_type=stream_type, **kwargs)
+        Receiver.__init__(self, stream=stream, stream_type=stream_type, verbose=verbose, **kwargs)
 
         self._chunk_size = None
         self.chunk_size = chunk_size
 
         self._pull_chunks = None
         self.pull_chunks = pull_chunks
-
-        self._verbose = verbose
 
         self._stream_inlet = None
         self._stream_info = None
@@ -24,7 +23,6 @@ class LSLReceiver(Receiver):
         lsl_receiver_data = dict(
             chunk_size=self.chunk_size,
             pull_chunks=self.pull_chunks,
-            verbose=self._verbose
         )
 
         return dict(**data, **lsl_receiver_data)
@@ -59,7 +57,7 @@ class LSLReceiver(Receiver):
     def pull_chunks(self, value: bool):
         self._pull_chunks = value
 
-    def get_chunk(self) -> [ndarray, ndarray]:
+    def receive_data(self) -> [ndarray, ndarray]:
         if not self.is_connected:
             self.connect()
 
@@ -126,7 +124,7 @@ class LSLReceiver(Receiver):
         stream_meta_data['host'] = stream_info.hostname()
         stream_meta_data['channel_count'] = stream_info.channel_count()
         stream_meta_data['channel_format'] = stream_info.channel_format()
-        stream_meta_data['sampling_rate'] = stream_info.nominal_srate()
+        stream_meta_data['nominal_srate'] = stream_info.nominal_srate()
         stream_meta_data['source_id'] = stream_info.source_id()
         stream_meta_data['session_id'] = stream_info.session_id()
         stream_meta_data['created_at'] = stream_info.created_at()
@@ -137,11 +135,11 @@ class LSLReceiver(Receiver):
             channels = stream_info.desc().child("channels").child("channel")
 
             for i in range(stream_meta_data['channel_count']):  # loop through all available channels
-                c_label = channels.child_value("label")  # get the channel type (e.g., ECG, EEG, ...)
-                c_unit = channels.child_value("unit")  # get the channel unit (e.g., mV, ...)
-                c_type = channels.child_value("type")  # get the channel type (e.g., ECG, EEG, ...)
+                channel_label = channels.child_value("label")  # get the channel type (e.g., ECG, EEG, ...)
+                channel_unit = channels.child_value("unit")  # get the channel unit (e.g., mV, ...)
+                channel_type = channels.child_value("type")  # get the channel type (e.g., ECG, EEG, ...)
 
-                stream_channels.append({'name': c_label, 'label': c_type, 'unit': c_unit})
+                stream_channels.append({'label': channel_label, 'type': channel_type, 'unit': channel_unit})
                 channels = channels.next_sibling()
 
         except TypeError:
@@ -154,7 +152,7 @@ class LSLReceiver(Receiver):
                        pull_chunks=True) -> [ndarray, ndarray]:
 
         if isinstance(chunk_size, float):
-            chunk_size = int(stream_info['meta_data']['sampling_rate'] * chunk_size)
+            chunk_size = int(stream_info['meta_data']['nominal_srate'] * chunk_size)
         assert isinstance(chunk_size, int)
 
         samples = [] if pull_chunks else empty((chunk_size, stream_info['meta_data']['channel_count']))

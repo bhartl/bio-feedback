@@ -78,8 +78,11 @@ class DataMonitor(object):
             if exc_type is not None:
                 self._show_process.terminate()
 
-            self._show_process.join()
-            self._show_process = None
+            try:
+                self._show_process.join()
+                self._show_process = None
+            except AssertionError:
+                pass
 
         if self._data_queue is not None:
             while not self._data_queue.empty():
@@ -94,7 +97,9 @@ class DataMonitor(object):
     def start(self):
         """ Starts the matplotlib FuncAnimation as subprocess (non-blocking, queue communication) """
         self._data_queue = Queue()
-        self._show_process = Process(name='animate', target=self.show, args=(self._data_queue, ))
+        self._show_process = Process(name='animate',
+                                     target=self.show,
+                                     args=(self._data_queue, ))
         self._show_process.start()
 
     def show(self, data_queue):

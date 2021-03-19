@@ -19,8 +19,8 @@ class TestBioplux(unittest.TestCase):
         data = bioplux.load_data(filename=filename, update_device=True, update_channels=True, update_sampling_rate=True)
 
         self.assertEqual(bioplux.name, "00:07:80:0F:31:5C")
-        channel_labels = ["DI", "CH1", "CH2", "CH3", "CH4", "CH5", "CH8"]
         channel_names = ["DI", "EOG", "ECG", "RESPIRATION", "EEG", "EDA", "CUSTOM/0.5/1.0/V"]
+        channel_labels = [bioplux.sensor_to_label(s) for s in channel_names]  # "DI", "CH1", "CH2", "CH3", "CH4", "CH5", "CH8"]
         for i, channel in enumerate(bioplux.channels):
             self.assertEqual(channel.sampling_rate, 500)
             self.assertEqual(channel.name, channel_names[i])

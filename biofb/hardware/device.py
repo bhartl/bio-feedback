@@ -4,10 +4,27 @@ from numpy import loadtxt, ndarray, asarray, concatenate
 import importlib
 from copy import deepcopy
 from os.path import abspath
+from biofb.pipeline import Receiver
+from collections import defaultdict
 
 
 class Device(Loadable):
     """ Device used in a bio-controller hardware setup. """
+
+    SENSOR_TO_LABEL = {}
+    LABEL_TO_UNIT = defaultdict(lambda *args, **kwargs: '', [])
+
+    @classmethod
+    def sensor_to_label(cls, sensor_name: str):
+        """ Hash-Table to map channels to special channel labels. """
+
+        if sensor_name in (None, (), {}, ""):
+            return 'CUSTOM'
+
+        if sensor_name not in cls.SENSOR_TO_LABEL:
+            return cls.sensor_to_label(sensor_name[:-1])
+
+        return cls.SENSOR_TO_LABEL[sensor_name]
 
     def __init__(self, name: str, channels: (tuple, list) = (), description: str = "", load_data_kwargs=(), data=None,
                  **parameters):
@@ -98,6 +115,28 @@ class Device(Loadable):
         return len(self.channels)
 
     @property
+    def channel_names(self) -> list:
+        return [d.name for d in self.channels]
+
+    @property
+    def sampling_rates(self):
+        return [c.sampling_rate for c in self.channels]
+
+    @property
+    def sampling_rate(self):
+        channel_sampling_rates = {c.sampling_rate for c in self.channels}
+        assert len(channel_sampling_rates) == 1, "Multiple sampling rates specified."
+        return channel_sampling_rates.pop()
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @description.setter
+    def description(self, value: str):
+        self._description = value
+
+    @property
     def data(self) -> (ndarray, None):
         if self._data is None:
             if self._setup is not None:
@@ -127,22 +166,6 @@ class Device(Loadable):
         data = concatenate([data, value]) if data is not None else asarray(value)
 
         self.data = data
-
-    @property
-    def sampling_rates(self):
-        return [c.sampling_rate for c in self.channels]
-
-    @property
-    def channel_names(self) -> list:
-        return [d.name for d in self.channels]
-
-    @property
-    def description(self) -> str:
-        return self._description
-
-    @description.setter
-    def description(self, value: str):
-        self._description = value
 
     @classmethod
     def load(cls, value):
@@ -233,9 +256,6 @@ class Device(Loadable):
 
     @receiver.setter
     def receiver(self, value):
-        from biofb.session import Controller
-        from biofb.hardware.pipeline import Receiver
-
         if value is None:
             if self._receiver is not None:
                 del self._receiver
@@ -263,7 +283,7 @@ class Device(Loadable):
         else:
             self._receiver = receiver
 
-        assert isinstance(self._receiver, Receiver) or isinstance(self._receiver, Controller)
+        assert isinstance(self._receiver, Receiver)
 
         stream_info = self.receiver.stream_info
 
@@ -275,13 +295,27 @@ class Device(Loadable):
 
             channels = []
             for channel in stream_info['channels']:
-                channels.append(Channel.load(dict(sampling_rate=stream_info['meta_data']['sampling_rate'], **channel)))
+                channel = deepcopy(channel)
+                channel_name = channel.pop('label')
+                channel_label = channel.pop('type', self.sensor_to_label(channel_name))
+                channel_unit = channel.pop('unit', self.LABEL_TO_UNIT[channel_label])
+                channel_sampling_rate = stream_info['meta_data']['nominal_srate']
+
+                channel_dict = dict(
+                    name=channel_name,
+                    label=channel_label,
+                    sampling_rate=channel_sampling_rate,
+                    unit=channel_unit,
+                    **channel
+                )
+
+                channels.append(Channel.load(channel_dict))
 
             self.channels = channels
 
         if update_sampling_rate:
             for c in self.channels:
-                c.sampling_rate = stream_info['meta_data']['sampling_rate']
+                c.sampling_rate = stream_info['meta_data']['nominal_srate']
 
     def receive_data(self, receiver: (None, Loadable)=None, **receiver_kwargs):
         """ """
@@ -297,7 +331,7 @@ class Device(Loadable):
 
         assert receiver is not None, "No receiver defined."
 
-        timestamp, data_chunk = receiver.get_chunk()
+        timestamp, data_chunk = receiver.receive_data()
         self.append_data(data_chunk)
 
         return timestamp, data_chunk

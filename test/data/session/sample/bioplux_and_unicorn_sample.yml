@@ -1,0 +1,23 @@
+filename:
+  - test/data/session/sample/bioplux/opensignals_0007800f315c_2021-01-19_15-03-08_converted.txt
+  - test/data/session/sample/unicorn/data-recorder/UnicornRecorder_20210125_144721.csv
+timestamp: 2021-01-19_15-03-08
+subject: {identity: "Test Person",}
+setting:
+  name: "biosignalsplux Test."
+  location: {name: "Test Location"}
+  controller: {name: "Test Controller"}
+  description: "Test Setting"
+setup:
+  name: "BiopluxUnicorn"
+  devices:
+    - name: "bioplux"
+      class: "Bioplux"
+      location: "biofb.hardware.devices"
+      load_data_kwargs: { update_device: True, update_channels: True }
+    - name: "unicorn"
+      class: "Unicorn"
+      location: "biofb.hardware.devices"
+  description: "Joined Bioplux and Unicorn measurement."
+comments:
+  - "Setup test."

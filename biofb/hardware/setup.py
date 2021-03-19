@@ -52,7 +52,7 @@ class Setup(Loadable):
         if len(devices) == 1:
             return devices[0]
 
-    def __del__(self):
+    def stop(self):
         if self._receivers is not None:
             for r in reversed(range(len(self._receivers))):
                 del self._receivers[r]
@@ -177,12 +177,11 @@ class Setup(Loadable):
                 device.receiver = (receiver, kwargs)
 
         if self._receivers is None:
-            self._receivers = [
-                d.receiver.start()
-                for d in self.devices
-            ]
 
-        chunk_data = [device.receiver.pull_data() for device in self.devices]
+            self._receivers = [d.receiver for d in self.devices]
+            [r.start() for r in self._receivers]
+
+        chunk_data = [receiver.pull_data() for receiver in self._receivers]
 
         # here data-preprocessing can be done:
         # - synchronize data of different devices using the time-stamps

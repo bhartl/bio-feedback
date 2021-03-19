@@ -5,5 +5,4 @@ from . import detect
 from . import transform
 
 __all__ = ['channels',
-           'visualize',
            ]

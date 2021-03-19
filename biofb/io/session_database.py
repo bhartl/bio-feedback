@@ -80,8 +80,8 @@ class SessionDatabase(Loadable):
 
                 db = SessionDatabase(**{**db, **kwargs})
 
-                for s in db.samples:
-                    s.load_data()
+                for sample in db.samples:
+                    sample.load_data()
 
                 return db
         except FileNotFoundError as fnfe:

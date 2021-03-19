@@ -1,7 +1,9 @@
 from biofb.hardware import Channel
+import biofb.hardware.channels as chs
 from biofb.hardware import Device
 from numpy import loadtxt
 from warnings import warn
+from collections import defaultdict
 
 
 class Bioplux(Device):
@@ -17,17 +19,45 @@ class Bioplux(Device):
     """
 
     NAME = 'Bioplux'
-    
+
+    SENSOR_TO_LABEL = dict((
+        ("BVP", "BVP"),
+        ("nSeq", "CNT"),
+        ("ECG", "ECG"),
+        ("EDA", "EDA"),
+        ("EEG", "EEG"),
+        ("EMG", "EMG"),
+        ("EOG", "EOG"),
+        ("TEMP", "TEMP"),
+        ("RESPIRATION", "PZT"),
+        ("DI", "DI"),
+        ("CUSTOM", "FSW"),
+    ))
+
+    LABEL_TO_UNIT = defaultdict(
+        lambda *args, **kwargs: '',
+        (('EOG', 'mV'),
+         ('ECG', 'mV'),
+         ('PZT', 'V'),
+         ('EEG', 'muV'),
+         ('EDA', 'muS'),
+         ('EMG', 'mV'),
+         ('BVP', ''),
+         ('CUSTOM', 'V'),
+         ('DI', ''),
+        )
+    )
+
     # channel definitions    
-    DI = Channel(name='DI', label="DI", sampling_rate=500, description="Digital input output.")
-    EOG = Channel(name='EOG', label="CH1", sampling_rate=500, description="Horizontal configuration (black right, red left, ref left).")
-    ECG = Channel(name='ECG', label="CH2", sampling_rate=500, description="Lean 1 configuration (ref top, red in, black out).")
-    RESP = Channel(name='RESPIRATION', label="CH3", sampling_rate=500, description="Placement between ECG electrodes.")
-    EEG = Channel(name='EEG', label="CH4", sampling_rate=500, description="FP1 (red, above left eye), FP2 (black, above right eye), M1 (behind ear above EOG ref).")
-    EDA = Channel(name='EDA', label="CH5", sampling_rate=500, description="Fingers right arm (red index, bottom third limb, black middle, bottom third limb).")
-    EMG = Channel(name='EMG', label="CH6", sampling_rate=500, description="Neck right side.")
-    BPV = Channel(name='BPV', label="CH7", sampling_rate=500, description="Blood Pressure Volume (index finger right).")
-    FSW = Channel(name='FSW', label="CH8", sampling_rate=500, description="Footswitch, RAW input.")
+    DI = chs.DI(name='DI', label="DI", sampling_rate=500, description="Digital input output.")
+    EOG = chs.EOG(name='EOG', label="CH1", sampling_rate=500, description="Horizontal configuration (black right, red left, ref left).")
+    ECG = chs.ECG(name='ECG', label="CH2", sampling_rate=500, description="Lean 1 configuration (ref top, red in, black out).")
+    RESP = chs.PZT(name='RESPIRATION', label="CH3", sampling_rate=500, description="Placement between ECG electrodes.")
+    EEG = chs.EEG(name='EEG', label="CH4", sampling_rate=500, description="FP1 (red, above left eye), FP2 (black, above right eye), M1 (behind ear above EOG ref).")
+    EDA = chs.EDA(name='EDA', label="CH5", sampling_rate=500, description="Fingers right arm (red index, bottom third limb, black middle, bottom third limb).")
+    EMG = chs.EMG(name='EMG', label="CH6", sampling_rate=500, description="Neck right side.")
+    BPV = chs.BVP(name='BPV', label="CH7", sampling_rate=500, description="Blood Pressure Volume (index finger right).")
+    FSW = chs.FSW(name='FSW', label="CH8", sampling_rate=500, description="Footswitch, RAW input.")
 
     # default channel arrangement of the Unicorn Hybrid Black
     CHANNELS = (DI, EOG, ECG, RESP, EEG, EDA, EMG, FSW, BPV)
@@ -103,14 +133,20 @@ class Bioplux(Device):
             self.data = data
 
         if update_channels:
-            self.channels = [
-                Channel.load(dict(name=sensor, label=label, sampling_rate=device_sampling_rate))
-                for sensor, label in zip(device_sensor, device_label)
-            ]
+            channels = []
+            for sensor, label in zip(device_sensor, device_label):
+                name = sensor
+                channel_label = self.sensor_to_label(name)
+
+                sampling_rate = device_sampling_rate
+                c = Channel.load(dict(name=sensor, label=channel_label, sampling_rate=sampling_rate))
+                c.label = label
+
+                channels.append(c)
 
             self.channels = [
-                Channel(name=device_column[1], label='DI', sampling_rate=device_sampling_rate)
-            ] + self.channels
+                chs.DI(name=device_column[1], label='DI', sampling_rate=device_sampling_rate)
+            ] + channels
 
         if update_sampling_rate:
             for c in self.channels:
@@ -127,11 +163,16 @@ class Bioplux(Device):
                 if c == channel.label:
                     data_columns.append(i)
                     found_channel = True
+
+                    if update_channels:
+                        channel.label = self.sensor_to_label(channel.name)
+                        channel.unit = self.LABEL_TO_UNIT[channel.label]  # if config else ''
+
                     break
 
             assert found_channel, f"Couldn't find device channel {channel.label} " \
                                   f"for sensor {channel.name} " \
-                                  f"in loaded channels {device_column}."
+                                  f"in loaded channels {[c.label for c in self.channels]}."
 
         assert len(data_columns) > 0, f"No data columns found for current device channels " \
                                       f"[{[c.name for c in self.channels]}]."

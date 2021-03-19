@@ -5,4 +5,7 @@ from .device import Device
 from .setup import Setup
 
 # further sub modules
-__all__ = ['channels', 'devices', 'API', 'pipeline']
+__all__ = ['channels',
+           'devices',
+           'API',
+           ]

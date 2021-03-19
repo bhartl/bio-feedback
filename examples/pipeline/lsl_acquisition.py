@@ -1,4 +1,6 @@
-""" We here follow closely the `[How-To] <https://biosignalsplux.discussion.community/post/howto-receive-signal-streams-using-opensignals-amp-python-10287105>`_
+""" Receiving data over the Lab Streaming Layer using pylsl
+
+    We here follow closely the `[How-To] <https://biosignalsplux.discussion.community/post/howto-receive-signal-streams-using-opensignals-amp-python-10287105>`_
     Receive Signal Streams using OpenSingals and Python by biosignalsplux.
 
     See also the documentary `<PROJECT HOME>/doc/bioplux/OpenSignals LSL Manual.pdf`
@@ -33,7 +35,7 @@
 from pylsl import StreamInlet
 from pylsl import resolve_stream  # The LSL system allows you to receive signal streams using different identifiers of your choice.
 import numpy as np
-from biofb.signal.visualize import DataMonitor
+from biofb.visualize import DataMonitor
 
 
 def data_acquisition(stream_inlet, sample_rate=500, chunk_size=1/2, time=10, channels=None, pull_chunks=True, hide_channels=('Seq', 'CNT')):
@@ -122,7 +124,7 @@ def get_lsl_metadata(stream_inlet: StreamInlet, ) -> tuple:
     stream_meta_data['host'] = stream_info.hostname()
     stream_meta_data['channel_count'] = stream_info.channel_count()
     stream_meta_data['channel_format'] = stream_info.channel_format()
-    stream_meta_data['sample_rate'] = stream_info.nominal_srate()
+    stream_meta_data['sampling_rate'] = stream_info.nominal_srate()
     stream_meta_data['source_id'] = stream_info.source_id()
     stream_meta_data['session_id'] = stream_info.session_id()
     stream_meta_data['created_at'] = stream_info.created_at()
@@ -171,7 +173,7 @@ def named_device(stream_name: str = 'OpenSignals', chunk_size: float = 1/5, time
         print(f'CH{channel_id} (label / unit):\t{channel}')
 
     print(f'found stream with {inlet.channel_count} channels with data-format ')
-    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, time=time, channels=channels)
+    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sampling_rate'], chunk_size=chunk_size, time=time, channels=channels)
 
 
 def specific_device(mac="00:07:80:0F:31:5C", chunk_size: float = 1/5, time: (int, float) = 15):
@@ -201,7 +203,7 @@ def specific_device(mac="00:07:80:0F:31:5C", chunk_size: float = 1/5, time: (int
         print(f'CH{channel_id} (label / unit):\t{channel}')
 
     print(f'found stream with {inlet.channel_count} channels with data-format ')
-    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, time=time, channels=channels)
+    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sampling_rate'], chunk_size=chunk_size, time=time, channels=channels)
 
 
 def hostname_device(chunk_size=1/5, time=15):
@@ -233,7 +235,7 @@ def hostname_device(chunk_size=1/5, time=15):
         print(f'CH{channel_id} (label / unit):\t{channel}')
 
     print(f'found stream with {inlet.channel_count} channels with data-format ')
-    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sample_rate'], chunk_size=chunk_size, time=time, channels=channels)
+    return data_acquisition(stream_inlet=inlet, sample_rate=meta_data['sampling_rate'], chunk_size=chunk_size, time=time, channels=channels)
 
 
 def multiple_devices(stream_names=('OpenSignals', 'Unicorn'), time=10, chunk_size=1/5, ):
