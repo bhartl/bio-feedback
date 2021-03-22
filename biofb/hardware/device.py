@@ -187,6 +187,30 @@ class Device(Loadable):
 
         return device_cls(**value)
 
+    @classmethod
+    def get_devices_module(cls, location: (str, None) = None):
+        if location is None:
+            location = 'biofb.hardware.devices'
+
+        return importlib.import_module(location)
+
+    @classmethod
+    def find_devices_cls(cls, cls_name: str):
+
+        devices_module = cls.get_devices_module()
+
+        for device_name, obj in inspect.getmembers(devices_module):
+            if inspect.isclass(obj):
+                if cls_name.lower() in device_name.lower():
+                    return obj
+                elif device_name.lower() in cls_name.lower():
+                    return obj
+
+        if cls is not Device:
+            raise ModuleNotFoundError(f'could not identify specific Device based on cls_name `{cls_name}`')
+
+        return cls
+
     def load_data(self, filename, **kwargs):
         """ Load numpy array from file.
 
@@ -246,7 +270,11 @@ class Device(Loadable):
 
         if plt is not None:
             plt.legend()
+
+            import warnings
+            warnings.simplefilter("ignore", UserWarning)
             plt.tight_layout()
+
             plt.show()
 
         return axes
@@ -298,19 +326,30 @@ class Device(Loadable):
             for channel in stream_info['channels']:
                 channel = deepcopy(channel)
                 channel_name = channel.pop('label')
-                channel_label = channel.pop('type', self.sensor_to_label(channel_name))
-                channel_unit = channel.pop('unit', self.LABEL_TO_UNIT[channel_label])
-                channel_sampling_rate = stream_info['meta_data']['nominal_srate']
+                channel_type = channel.pop('type', self.sensor_to_label(channel_name))
 
-                channel_dict = dict(
-                    name=channel_name,
-                    label=channel_label,
-                    sampling_rate=channel_sampling_rate,
-                    unit=channel_unit,
-                    **channel
-                )
+                if isinstance(channel_type, Channel):
+                    assert channel_type.sampling_rate == stream_info['meta_data']['nominal_srate']
 
-                channels.append(Channel.load(channel_dict))
+                    channel = channel_type.copy()
+                    channel.name = channel_name
+                    channel.unit = channel.pop('unit', channel_type.unit)
+
+                else:
+                    channel_sampling_rate = stream_info['meta_data']['nominal_srate']
+                    channel_unit = channel.pop('unit', self.LABEL_TO_UNIT[channel_type])
+
+                    channel_dict = dict(
+                        name=channel_name,
+                        label=channel_type,
+                        sampling_rate=channel_sampling_rate,
+                        unit=channel_unit,
+                        **channel
+                    )
+
+                    channel = Channel.load(channel_dict)
+
+                channels.append(channel)
 
             self.channels = channels
 
@@ -337,24 +376,3 @@ class Device(Loadable):
 
         return timestamp, data_chunk
 
-    @classmethod
-    def get_devices_module(cls, location: (str, None) = None):
-        if location is None:
-            location = 'biofb.hardware.devices'
-
-        return importlib.import_module(location)
-
-    @classmethod
-    def find_devices_cls(cls, cls_name: str):
-
-        devices_module = cls.get_devices_module()
-
-        for device_name, obj in inspect.getmembers(devices_module):
-            if inspect.isclass(obj):
-                if cls_name.lower() in device_name.lower():
-                    return obj
-
-        if cls is not Device:
-            raise ModuleNotFoundError(f'could not identify specific Device based on cls_name `{cls_name}`')
-
-        return cls

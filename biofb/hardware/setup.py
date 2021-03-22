@@ -59,15 +59,6 @@ class Setup(Loadable):
         for stream in streams:
             receiver = receiver_cls(stream=stream, **dict(stream_kwargs))
 
-            if receiver.verbose:
-                print('Stream infos: ')
-                for k, v in receiver.stream_info['meta_data'].items():
-                    print(f'  {k}: {v}')
-
-                print('\nChannel infos: ')
-                for c in receiver.stream_info['channels']:
-                    print(f'  {c}')
-
             device = Device.load(
                 value={'name': stream,
                        'class': Device.find_devices_cls(stream),
@@ -76,6 +67,15 @@ class Setup(Loadable):
             )
 
             device.receiver = receiver
+
+            if receiver.verbose:
+                print('Stream infos: ')
+                for k, v in receiver.stream_info['meta_data'].items():
+                    print(f'  {k}: {v}')
+
+                print('\nChannel infos: ')
+                for channel_stream, channel_device in zip(receiver.stream_info['channels'], device.channels):
+                    print(f'  stream channel: {channel_stream} --- device channel: {channel_device}')
 
             devices.append(device)
 

@@ -133,8 +133,8 @@ def send_sample(sample: (str, Sample) = TEST_FILE_SAMPLE):
 
             print()
             print('channel info:')
-            for c in t.channels:
-                print(f'- {c}')
+            for c, dc in zip(t.channels, device.channels):
+                print(f'- device channel {dc} -- stream channel {c}')
 
             transmitter.append(t)
 

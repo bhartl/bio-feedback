@@ -39,7 +39,12 @@ class Unicorn(Device):
     CHANNELS = (EEG1, EEG2, EEG3, EEG4, EEG5, EEG6, EEG7, EEG8,
                 ACCX, ACCY, ACCZ, GYRX, GYRY, GYRZ,
                 AKKU, COUNT, VALID)
-    
+
+    SENSOR_TO_LABEL = dict((
+        (c.label, c)
+        for c in CHANNELS
+    ))
+
     def __init__(self, name=NAME, channels=None, **kwargs):
         """Constructs a biofb Unicorn instance.
 

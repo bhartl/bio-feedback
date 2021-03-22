@@ -62,13 +62,13 @@ class Channel(Loadable):
         :return:
         """
 
-        from biofb.hardware import channels as biofb_channels
+        from biofb.hardware import channels as channels_module
 
         if isinstance(value, dict):
-            channel_cls = getattr(biofb_channels, value['name'], getattr(biofb_channels, value.get('label', 'None'), cls))
+            channel_cls = getattr(channels_module, value['name'], getattr(channels_module, value.get('label', 'None'), cls))
 
         elif isinstance(value, cls):
-            channel_cls = getattr(biofb_channels, value.name, cls)
+            channel_cls = value.__class__
 
             if channel_cls == cls:
                 return value

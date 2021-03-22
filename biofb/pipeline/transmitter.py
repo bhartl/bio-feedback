@@ -360,8 +360,8 @@ class Transmitter(Loadable, metaclass=ABCMeta):
             if transmitter.terminate_when_empty:
                 break
 
-        if transmitter.verbose:
-            print(f'Transmitter {transmitter.stream} terminated')
+        # if transmitter.verbose:
+        print(f'Transmitter {transmitter.stream} terminated')
 
     def start(self):
         """ Start transmitting data as background process
