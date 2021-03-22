@@ -31,3 +31,10 @@ samples:
     setup: *BIOP_PURE
     comments:
       - "Setup test."
+  - filename: data/session/sample/bioplux/opensignals_0007800f315c_2021-01-19_17-33-17_converted.txt
+    timestamp: 2021-01-19_17-33-17
+    subject: *TP
+    setting: *TEST_SESSION
+    setup: *BIOP_PURE
+    comments:
+      - "Setup test."

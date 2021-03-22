@@ -1,9 +1,10 @@
 from biofb.io import Loadable
 from biofb.pipeline import Transmitter
 from pylsl import StreamOutlet, StreamInfo
-from biofb import __manufacturer__ as manufacturer
+from biofb import __product__ as manufacturer
 from collections import defaultdict
-from numpy import ndarray, ndim
+from numpy import ndarray, ndim, shape
+import time
 
 
 class LSLTransmitter(Transmitter):
@@ -51,7 +52,7 @@ class LSLTransmitter(Transmitter):
 
         return self.stream_outlet
 
-    def transmit_data(self, data: ndarray):
+    def transmit_data(self, data: ndarray, sleep: (int, float) = 0.):
         """ Put data sample or chunk on the transmission stream
 
         We here follow closely the
@@ -59,14 +60,15 @@ class LSLTransmitter(Transmitter):
         script.
 
         :param data: array-like data chunk
+        :param sleep: delay between sample transmission in seconds (to augment sampling rate).
         """
 
         if ndim(data) == 1:
             self._stream_outlet.push_sample(data)
+            time.sleep(abs(sleep)) if sleep != 0. else None
         else:
             self._stream_outlet.push_chunk(data)
-
-        self.augment_sampling_rate()
+            time.sleep(abs(sleep)*shape(data)[0]) if sleep != 0. else None
 
     @staticmethod
     def connect_to_lsl_stream(stream_info: StreamInfo) -> StreamOutlet:

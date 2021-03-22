@@ -2,6 +2,7 @@ from biofb.pipeline import LSLTransmitter
 from biofb.hardware.devices import Bioplux
 from biofb.session import Sample
 
+
 STREAM_NAME_BIOPLUX = 'VirtualPlux'
 TEST_FILE_BIOPLUX = 'test/data/session/sample/bioplux/opensignals_0007800f315c_2021-01-19_15-03-08_converted.txt'
 TEST_FILE_SAMPLE = 'test/data/session/sample/bioplux_and_unicorn_sample.yml'
@@ -113,9 +114,11 @@ def send_sample(sample: (str, Sample) = TEST_FILE_SAMPLE):
     try:
         for i, device in enumerate(sample.setup.devices):
             t = LSLTransmitter(device=device,
-                               stream=f'{device.name}',
+                               stream=f'{device.__class__.__name__}',
                                stream_type='name',
                                augment_sampling_rate=True,
+                               terminate_when_empty=True,
+                               verbose=(i == 0),
                                )
 
             print('---')
@@ -135,35 +138,22 @@ def send_sample(sample: (str, Sample) = TEST_FILE_SAMPLE):
 
             transmitter.append(t)
 
+        # push device data to the queue, could also be done in chunks
+        for t, d in zip(transmitter, sample.setup.devices):
+            t.push_data(d.data)
+
+        # start transmitter to transmit data received from the queue in a pus_data event
         for t in transmitter:
             t.start()
 
-        n_data = [len(d.data) for d in sample.setup.devices]
-
-        durations_in_seconds = [
-            n / t.device["nominal_srate"]
-            for t, n in zip(transmitter, n_data)
-        ]
-
-        show_each = 10
-        for i in range(max(n_data)):
-            for t, d in zip(transmitter, sample.setup.devices):
-                if i < len(d.data):
-                    t.push_data(d.data[i])
-
-            sent_percentage = i / (max(n_data) - 1)
-            remaining_time = max(durations_in_seconds) * (1. - sent_percentage)
-
-            if not (i % show_each) or sent_percentage == 1.:
-                print('\rSent {:.2f}%, {:.2f} secs remaining ...      '.format(
-                    sent_percentage * 100, remaining_time),
-                    end='' if sent_percentage != 1. else None)
+        for t in transmitter:
+            t.join()
 
     finally:
         for t in transmitter:
             t.stop()
 
-    print('Done transmitting data.')
+    print('Done with data-transmission')
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ from copy import deepcopy
 from os.path import abspath
 from biofb.pipeline import Receiver
 from collections import defaultdict
+import inspect
 
 
 class Device(Loadable):
@@ -174,16 +175,15 @@ class Device(Loadable):
 
         value = deepcopy(value)
         device_cls = value.pop('class', cls)
-        device_src = value.pop('location', None)
 
-        if device_cls != Device:
+        if device_cls != cls:
 
-            if device_src is not None:
-                device_module = importlib.import_module(device_src)
+            if isinstance(device_cls, str):
+                device_module = cls.get_devices_module(value.pop('location', None))
                 device_cls = getattr(device_module, device_cls)
 
-            else:
-                device_cls = getattr(locals(), device_cls)
+            assert inspect.isclass(device_cls)
+            # device_cls = getattr(locals(), device_cls)
 
         return device_cls(**value)
 
@@ -207,7 +207,7 @@ class Device(Loadable):
     def __str__(self) -> str:
         return f"<Device: {self.name}>"
 
-    def plot(self, data=None, axes=None, label_by='label', figure_kwargs=(), **plot_kwargs):
+    def plot(self, data=None, axes=None, label_by='label', figure_kwargs={}, **plot_kwargs):
         """ Plot provided data for all channel devices.
 
         :param data: (Optional) data for each channel (multiple data for each channel are possible,
@@ -232,6 +232,7 @@ class Device(Loadable):
         plt = None
         if axes is None:
             import matplotlib.pyplot as plt
+            figure_kwargs['sharex'] = figure_kwargs.get('sharex', True)
             f, axes = plt.subplots(len(self.channels), 1, **dict(figure_kwargs))
 
         for i in range(len(self.channels)):
@@ -335,3 +336,25 @@ class Device(Loadable):
         self.append_data(data_chunk)
 
         return timestamp, data_chunk
+
+    @classmethod
+    def get_devices_module(cls, location: (str, None) = None):
+        if location is None:
+            location = 'biofb.hardware.devices'
+
+        return importlib.import_module(location)
+
+    @classmethod
+    def find_devices_cls(cls, cls_name: str):
+
+        devices_module = cls.get_devices_module()
+
+        for device_name, obj in inspect.getmembers(devices_module):
+            if inspect.isclass(obj):
+                if cls_name.lower() in device_name.lower():
+                    return obj
+
+        if cls is not Device:
+            raise ModuleNotFoundError(f'could not identify specific Device based on cls_name `{cls_name}`')
+
+        return cls

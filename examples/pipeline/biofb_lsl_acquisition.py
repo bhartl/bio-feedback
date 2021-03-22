@@ -6,6 +6,8 @@ from biofb.hardware import Device
 from biofb.pipeline import LSLReceiver
 from biofb.visualize import DataMonitor
 import numpy as np
+import time
+import matplotlib.pyplot as plt
 
 
 TEST_FILE_SAMPLE = 'test/data/session/sample/bioplux_and_unicorn_sample.yml'
@@ -71,6 +73,7 @@ def device_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, ski
         'ylabel': (('sensor data',), {})
     }
 
+    plt.style.use('fivethirtyeight')
     with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, figsize=(10, 5)) as dm:
 
         steps = None
@@ -136,6 +139,7 @@ def setup_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, skip
         'ylabel': (('sensor data',), {})
     }
 
+    plt.style.use('fivethirtyeight')
     with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, figsize=(10, 5)) as dm:
 
         steps = None
@@ -206,6 +210,7 @@ def sample_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, ski
         'ylabel': (('sensor data',), {})
     }
 
+    plt.style.use('fivethirtyeight')
     with DataMonitor(channels=plot_channels, plt_kwargs=plt_kwargs, figsize=(10, 5)) as dm:
 
         steps = None
@@ -240,39 +245,44 @@ def sample_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, ski
         print("Done with data-acquisition")
 
 
-def acquire_sample_data(sample: (str, Sample) = TEST_FILE_SAMPLE, streams=['bioplux', 'unicorn'], chunk_size=1., pull_chunks=False, verbose=True,
+def acquire_sample_data(streams=['Bioplux', 'Unicorn'], chunk_size=1., verbose=True,
                         delta_time=10, total_time=1000, lw=2., ylim=2.):
 
-    sample = Sample.load(sample)
-    shared_kwargs = dict(stream_type='name', chunk_size=chunk_size,
-                         pull_chunks=pull_chunks, verbose=verbose)
-
-    for device, stream in zip(sample.setup.devices, streams):
-        # setup to stream
-        device.receiver = (LSLReceiver, dict(stream=stream, **shared_kwargs))
-
-        # print stream info
-        assert isinstance(device.receiver, LSLReceiver)
-        print('LSL stream infos: ')
-        for k, v in device.receiver.stream_info['meta_data'].items():
-            print(f'  {k}: {v}')
-
-        print()
-        print('LSL channel infos: ')
-        for c in device.receiver.stream_info['channels']:
-            print(f'  {c}')
+    hardware_setup = Setup.from_streams(
+        name='LSL Streaming Setup',
+        receiver_cls=LSLReceiver,
+        streams=streams,
+        stream_kwargs=dict(chunk_size=chunk_size,
+                           verbose=verbose,
+                           ),
+    )
 
     try:
         # receive data
+        then = time.time()
         for i in range(10):
-            state = sample.state
-            print(f'received {[len(data) for data in state]} data-points from {len(state)} devices.')
+            timestamps, samples = hardware_setup.receive_data()
+
+            now = time.time()
+            print(f'received {[len(data) for data in samples]} data-points from {hardware_setup.n_devices} devices after {now-then:.2f} sec.')
+            then = now
 
     finally:
-        sample.setup.stop()
+        hardware_setup.stop()
 
     print("Done with data-acquisition")
 
+    from multiprocessing import Process
+
+    device_plot = [
+        Process(target=device.plot)
+        for device in hardware_setup.devices
+    ]
+
+    [dp.start() for dp in device_plot]
+    [dp.join() for dp in device_plot]
+
+    exit()
 
 if __name__ == '__main__':
     import argh

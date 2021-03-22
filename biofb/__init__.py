@@ -11,4 +11,4 @@ __all__ = ['signal',
 
 __author__ = ['Benedikt Hartl']
 __version__ = 0.1
-__manufacturer__ = 'BrainProject'
+__product__ = 'BrainProject'

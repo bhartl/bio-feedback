@@ -4,7 +4,8 @@ from abc import ABCMeta, abstractmethod
 from multiprocessing import Process, Queue, Event
 from queue import Empty
 from collections import defaultdict
-import time
+from numpy import ndim, shape, concatenate
+
 
 STREAM_TYPES = ('name', 'type', 'hostname')
 
@@ -21,7 +22,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
     """
 
     def __init__(self, device: Loadable, stream: (str, None) = None, channels=None,
-                 stream_type: str = 'name', verbose: bool = True,
+                 stream_type: str = 'name', terminate_when_empty=True, verbose: bool = True,
                  **kwargs):
         """ Construct a Transmitter instance
 
@@ -29,6 +30,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         :param device:
         :param channels:
         :param stream_type:
+        :param terminate_when_empty:
         :param verbose:
         :param kwargs:
         """
@@ -48,11 +50,16 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         self._stream_type = None
         self.stream_type = stream_type
 
+        self._terminate_when_empty = None
+        self.terminate_when_empty = terminate_when_empty
+
         self._verbose = None
         self.verbose = verbose
 
+        self._push_data = None
         self._pusher = None
         self._queue = None
+        self._transmitter_event = None
 
     def __enter__(self):
         self.start()
@@ -85,6 +92,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
                     stream_type=self.stream_type,
                     device=self.device,
                     channels=self.channels,
+                    terminate_when_empty=self.terminate_when_empty,
                     verbose=self.verbose,
                     **self._kwargs)
 
@@ -97,9 +105,21 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         self._stream = value  # if value is not None else self.device['name']
 
     @property
-    def device(self) -> defaultdict:
-        return self._device
+    def verbose(self) -> bool:
+        return self._verbose
 
+    @verbose.setter
+    def verbose(self, value: bool):
+        self._verbose = value
+
+    @property
+    def terminate_when_empty(self) -> bool:
+        return self._terminate_when_empty
+
+    @terminate_when_empty.setter
+    def terminate_when_empty(self, value: bool):
+        self._terminate_when_empty = value
+        
     @property
     def channels(self) -> [defaultdict]:
         return self._channels
@@ -108,6 +128,10 @@ class Transmitter(Loadable, metaclass=ABCMeta):
     def channels(self, value: [defaultdict]):
         assert all(isinstance(c, defaultdict) or isinstance(c, dict) for c in value)
         self._channels = value
+        
+    @property
+    def device(self) -> defaultdict:
+        return self._device
 
     @device.setter
     def device(self, value: Loadable):
@@ -206,14 +230,6 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         self._stream_type = value
 
     @property
-    def verbose(self) -> bool:
-        return self._verbose
-
-    @verbose.setter
-    def verbose(self, value: bool):
-        self._verbose = value
-
-    @property
     @abstractmethod
     def is_connected(self) -> bool:
         """ Boolean property specifying whether the stream is connected
@@ -230,7 +246,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         """
         pass
 
-    def augment_sampling_rate(self, augmented_sampling_rate: int = 0):
+    def get_augment_sampling_rate_delay(self, augmented_sampling_rate: int = 0):
         """ sleep for 1./augmented_sampling_rate if augmented_sampling_rate > 0
             or if augmented_sampling_rate has been defined during construction.
 
@@ -243,7 +259,9 @@ class Transmitter(Loadable, metaclass=ABCMeta):
                 augmented_sampling_rate = self.device['nominal_srate']
 
         if augmented_sampling_rate:
-            time.sleep(1./abs(augmented_sampling_rate))
+            return 1./abs(augmented_sampling_rate)
+
+        return 0.
 
     @property
     @abstractmethod
@@ -255,22 +273,39 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def transmit_data(self, data: ndarray):
+    def transmit_data(self, data: ndarray, sleep: (int, float) = 0.):
         """ Put data chunk on the transmission stream
 
         :param data: array-like data chunk
+        :param sleep: delay between sample transmission in seconds (to augment sampling rate).
         """
         pass
 
+    def push_data(self, data: ndarray = None):
+        """ Push data chunk to transmitting queue (for multiprocessing)
+
+        :param data: Array-like data chunk
+        """
+
+        if data is None:
+            data = self._push_data
+            self._push_data = None
+
+        if self._queue is not None:
+            self._queue.put(data)
+        else:
+            self._push_data = data if self._push_data is None else concatenate([self._push_data, data])
+
     @classmethod
-    def start_transmitting_data(cls, queue, connectin_established_event, **kwargs):
+    def start_transmitting_data(cls, queue, transmitter_event, **kwargs):
         """ Transmit data that are pushed on the queue in the main process via the push_data method
 
         Data that have been pushed (via push_data(...)) are collected by the transmitter
         and transmitted via put_chunk(...).
 
         :param queue: multiprocessing Queue to get to-be-transmitted data from the main process
-        :param connectin_established_event:
+        :param transmitter_event:
+        :param terminate_when_empty:
         :param kwargs:
         """
 
@@ -285,11 +320,48 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         if transmitter.verbose:
             print('Connection established')
 
-        connectin_established_event.set()
+        transmitter_event.set()
 
         while True:
-            chunk_data = transmitter._queue.get()
-            transmitter.transmit_data(chunk_data)
+            data = transmitter._queue.get()
+
+            # check whether several chunks are defined [chunk1, ...]
+            # assuming chunks to be at most 2D chunk1 ~ [sample1, ...]
+            transmit_iteratively = ndim(data) > 2
+            augmented_sleep = transmitter.get_augment_sampling_rate_delay()
+            sampling_rate = transmitter.device['nominal_srate']
+
+            if transmitter.verbose:
+                print('Start transmitting data',
+                      '-chunks' * transmit_iteratively,
+                      f'of shape {shape(data)}',
+                      'iteratively' * transmit_iteratively)
+
+            for chunk in (data if transmit_iteratively else [data]):
+
+                # check whether the number of samples per chunk exceeds the sampling rate
+                # if so, send sample by sample
+                transmit_as_samples = len(chunk) > sampling_rate
+
+                chunk = chunk if transmit_as_samples else [chunk]
+                n_chunks = len(chunk)
+                for i, sample in enumerate(chunk):
+                    transmitter.transmit_data(sample, sleep=augmented_sleep)
+
+                    sent_percentage = (i + 1) / n_chunks
+                    if transmitter.verbose and (not i % sampling_rate or sent_percentage == 1):
+                        print('\rSent {:}/{:} ({:.2f}%) samples of shape {:} ... '.format(
+                            i,
+                            n_chunks,
+                            sent_percentage * 100,
+                            sample.shape
+                        ), end='' * (sent_percentage != 1))
+
+            if transmitter.terminate_when_empty:
+                break
+
+        if transmitter.verbose:
+            print(f'Transmitter {transmitter.stream} terminated')
 
     def start(self):
         """ Start transmitting data as background process
@@ -300,21 +372,21 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         and sent via put_chunk(...).
         """
         self._queue = Queue()
-        self._connectin_established_event = Event()
+        self._transmitter_event = Event()
         self._pusher = Process(name='transmitter',
                                target=type(self).start_transmitting_data,
-                               args=(self._queue, self._connectin_established_event),
+                               args=(self._queue, self._transmitter_event),
                                kwargs=self.to_dict())
         self._pusher.start()
-        self._connectin_established_event.wait()
+        self._transmitter_event.wait()
+
+        if self._push_data is not None:
+            self.push_data()
+
         return self
 
-    def push_data(self, data: ndarray):
-        """ Push data chunk to transmitting queue (for multiprocessing)
+    def join(self):
+        if self._pusher is None:
+            return
 
-        :param data: Array-like data chunk
-        """
-        assert self._pusher is not None, "Background streaming needs to be `start`ed, use `receiver.start()`."
-        assert self._queue is not None, "Background streaming needs to be `start`ed."
-        self._queue.put(data)
-        self.augment_sampling_rate()
+        self._pusher.join()

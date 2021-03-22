@@ -43,7 +43,7 @@ class Receiver(Loadable, metaclass=ABCMeta):
         self._puller = None
         self._queue = None
 
-    def close(self):
+    def stop(self):
         if self._puller is not None:
             self._puller.terminate()
             self._puller = None

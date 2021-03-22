@@ -52,10 +52,41 @@ class Setup(Loadable):
         if len(devices) == 1:
             return devices[0]
 
+    @classmethod
+    def from_streams(cls, receiver_cls, streams, stream_kwargs=(), devices_location=None, **setup_kwargs):
+        devices = []
+
+        for stream in streams:
+            receiver = receiver_cls(stream=stream, **dict(stream_kwargs))
+
+            if receiver.verbose:
+                print('Stream infos: ')
+                for k, v in receiver.stream_info['meta_data'].items():
+                    print(f'  {k}: {v}')
+
+                print('\nChannel infos: ')
+                for c in receiver.stream_info['channels']:
+                    print(f'  {c}')
+
+            device = Device.load(
+                value={'name': stream,
+                       'class': Device.find_devices_cls(stream),
+                       'location': devices_location,
+                       'description': f'`Setup.from_stream` device.'}
+            )
+
+            device.receiver = receiver
+
+            devices.append(device)
+
+        return cls.load(value={'devices': devices, **setup_kwargs})
+
     def stop(self):
         if self._receivers is not None:
-            for r in reversed(range(len(self._receivers))):
-                del self._receivers[r]
+            for r in self._receivers:
+                r.stop()
+
+            self._receivers = None
 
     @property
     def name(self) -> str:

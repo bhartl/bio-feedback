@@ -38,7 +38,7 @@ def append_sys_path(lib_path, is_abspath=False):
     if not is_abspath:
         lib_path = os.path.join(API_ROOT, lib_path)
 
-    if platform.system() != "Windows":
-        lib_path = lib_path.replace('/', '\\')
+    # if platform.system() == "Windows":
+    #     lib_path = lib_path.replace('/', '\\')
 
     return sys.path.append(lib_path)

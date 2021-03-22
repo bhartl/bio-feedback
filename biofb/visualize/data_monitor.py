@@ -1,12 +1,8 @@
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from multiprocessing import Process, Queue, TimeoutError
-from multiprocessing.connection import Connection
 import numpy as np
 from queue import Empty
-
-
-plt.style.use('fivethirtyeight')
 
 
 class DataMonitor(object):
@@ -23,7 +19,7 @@ class DataMonitor(object):
         >         <do something else>
     """
 
-    def __init__(self, data: list = None, channels: (None, list) = None, update_rate: (int, float) = 1, fig_ax: tuple = (), plt_kwargs={}, clear_axes=True, x_offset=True, **fig_kwargs):
+    def __init__(self, data: list = None, channels: (None, list) = None, update_rate: (int, float) = 1, plt_kwargs={}, clear_axes=True, x_offset=True, **fig_kwargs):
         """
         :param data: initial array-like data object to be plotted, a data format of (x, *y) is assumed.
                      For custom use consider overwriting the DataMonitor plot method.
@@ -32,7 +28,6 @@ class DataMonitor(object):
                          be forwarded to ax.plot method as kwargs.
                          For custom use consider overwriting the DataMonitor plot method.
         :param update_rate: update rate of matplotlib animation in milliseconds
-        :param fig_ax: A tuple specifying whether an existing figure or axes objects are used or if a new one should be generated (per default `if fig_ax is ()`).
         :param plt_kwargs: Dictionary to control plot formatting:
                            (i) each **key** in `plt_kwargs` must correspond to an **attribute** of the
                            `matplotlib.pyplot` module (e.g. 'xlim' or 'ylabel') and
@@ -51,12 +46,7 @@ class DataMonitor(object):
         self.clear_axes = clear_axes
         self._x_offset = x_offset
 
-        if fig_ax in ((), None):
-            self.fig = plt.figure(**fig_kwargs)
-            self.ax = plt.gca()
-        else:
-            self.fig, self.ax = fig_ax
-
+        self.fig, self.ax = self.make_figure(**fig_kwargs)
         self.fig_kwargs = fig_kwargs
         self.plt_kwargs = plt_kwargs
 
@@ -94,17 +84,41 @@ class DataMonitor(object):
             self._data_queue.close()
             self._data_queue = None
 
+    def stop(self):
+        if self._show_process is not None:
+            self.__exit__(None, None, None)
+
+    def make_figure(self, fig_ax: tuple = (), **kwargs):
+        """
+
+        :param fig_ax: A tuple specifying whether an existing figure or axes objects are used or if a new one should be generated (per default `if fig_ax is ()`).
+        :param kwargs:
+        :return:
+        """
+
+        if fig_ax not in ((), None):
+            self.fig, self.ax = fig_ax
+            return self.fig, self.ax
+
+        plt.figure(**kwargs)
+        self.fig = plt.gcf()
+        self.ax = plt.gca()
+
+        return self.fig, self.ax
+
     def start(self):
         """ Starts the matplotlib FuncAnimation as subprocess (non-blocking, queue communication) """
         self._data_queue = Queue()
         self._show_process = Process(name='animate',
                                      target=self.show,
-                                     args=(self._data_queue, ))
+                                     args=(self._data_queue, self.fig, self.ax))
         self._show_process.start()
 
-    def show(self, data_queue):
+    def show(self, data_queue, fig, ax):
         """ Creates the matplotlib FuncAnimation and creates the plot (blocking)"""
         self._data_queue = data_queue
+        self.fig = fig
+        self.ax = ax
 
         self._func_animation = FuncAnimation(
             self.fig,                   # figure to animate
@@ -152,11 +166,13 @@ class DataMonitor(object):
     def plot(self, data):
         """ Plots the data
 
-        :param data: the data to be plotted, assumed to be in the format of (x, *y)
+        :param x: the data to be plotted, assumed to be in the format of (x, *y)
+        :param y: the data to be plotted, assumed to be in the format of (x, *y)
 
         - If `channels` information have been specified in the object construction (i.e., a list of dicts),
           each data-channel (`y[i]`) is plotted (`plt.plot`) with keywords `**self.channel[i]`.
         """
+
         x, *y = data
 
         if np.ndim(y) == 1:
@@ -219,3 +235,34 @@ if __name__ == '__main__':
             time.sleep(0.05)
 
     print('done')
+
+
+# class MultiDeviceMonitor(DataMonitor):
+#     def __init__(self, n_devices, *args, **kwargs):
+#         self._n_devices = n_devices
+#         DataMonitor.__init__(self, *args, **kwargs)
+#
+#     def make_figure(self, figsize=(10, 10), **kwargs):
+#         return plt.subplots(1, self._n_devices, figsize=figsize)
+#
+#     def plot(self, data):
+#
+#         for device_id, device_channels in enumerate(self.channels):
+#             ax = self.ax[device_id]
+#             device_data = data[device_id]
+#
+#             steps_idx = None
+#             data_idx = []
+#             for i, c in enumerate(device_channels):
+#                 if c.get('x_axis', False):
+#                     steps_idx = i
+#                 else:
+#                     data_idx.append(i)
+#
+#             x = None
+#             if steps_idx is not None:
+#                 x = device_data[:, steps_idx]
+#
+#             for i in data_idx:
+#                 c = {} if device_channels is None else device_channels[i]
+#                 ax.plot(x, device_data[i], **c) if x is not None else ax.plot(device_data[i], **c)
