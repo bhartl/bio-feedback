@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 TEST_FILE_SAMPLE = 'test/data/session/sample/bioplux_and_unicorn_sample.yml'
 
 
-def device_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, skip_samples=1, ylim=1.5, lw=2.):
+def device_acquisition(stream='OpenSignals', delta_time=3, total_time=6, skip_samples=1, ylim=1.5, lw=2.):
     """ Receive data from specified stream and update a biofb.hardware.Device data array
 
     :param stream: LSL stream name
@@ -73,23 +73,15 @@ def device_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, ski
                      make_fig_kwargs=dict(figsize=(10, 5)),
                      ) as dm:
 
-        steps = None
-
         for i in range(int(total_time/receiver_kwargs['chunk_size'])):
 
             # updates device data ...
             time, samples = device.receive_data()
 
-            if counter_idx is None:
-                if steps is None:
-                    steps = np.arange(0, samples.shape[0])
-                else:
-                    steps = np.concatenate([steps, np.arange(steps[-1], steps[-1] + samples.shape[0])])
-
             # here we access the device data
             data_slice = int(delta_time * device.receiver.stream_info['meta_data']['nominal_srate'])
 
-            x = device.data[-data_slice::skip_samples, counter_idx] if counter_idx is not None else steps[-data_slice::skip_samples]
+            x = np.arange(min(data_slice, device.data.shape[0]))[::skip_samples]
             y = device.data[-data_slice::skip_samples, show_idx]
             plot_data = np.concatenate([x[:, None], y], axis=-1)
 
@@ -98,7 +90,7 @@ def device_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, ski
         print("Done with data-acquisition")
 
 
-def setup_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, skip_samples=1, ylim=1.5, lw=2.):
+def setup_acquisition(stream='OpenSignals', delta_time=3, total_time=6, skip_samples=1, ylim=1.5, lw=2.):
     device = Device(name='lsl-receiver')
     setup = Setup(name='SoloPlux', devices=[device])
 
@@ -141,24 +133,16 @@ def setup_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, skip
                      make_fig_kwargs=dict(figsize=(10, 5)),
                      ) as dm:
 
-        steps = None
-
         for i in range(int(total_time/receiver_kwargs['chunk_size'])):
 
             # updates setup data ...
             time, samples = setup.receive_data()[0]
 
-            if counter_idx is None:
-                if steps is None:
-                    steps = np.arange(0, samples.shape[0])
-                else:
-                    steps = np.concatenate([steps, np.arange(steps[-1], steps[-1] + samples.shape[0])])
-
             # here we access setup data
             data_slice = int(delta_time * device.receiver.stream_info['meta_data']['nominal_srate'])
 
-            x = setup.data[0][-data_slice::skip_samples, counter_idx] if counter_idx is not None else steps[-data_slice::skip_samples]
-            y = setup.data[0][-data_slice::skip_samples, show_idx]
+            x = np.arange(min(data_slice, device.data.shape[0]))[::skip_samples]
+            y = device.data[-data_slice::skip_samples, show_idx]
             plot_data = np.concatenate([x[:, None], y], axis=-1)
 
             dm.data = plot_data.T
@@ -276,6 +260,10 @@ def ax_plot(ax, data, channels):
             c['dt_slice'] = dt_slice
 
 
+def ax_legend(ax, channels):
+    [device_ax.legend(loc='center right') for device_ax in ax]
+
+
 def multiple_device_acquisition(streams=('Bioplux', 'Unicorn'), chunk_size=1./5., verbose=True,
                                 delta_time=5., total_time=10., lw=2., ylim=4.):
 
@@ -293,7 +281,7 @@ def multiple_device_acquisition(streams=('Bioplux', 'Unicorn'), chunk_size=1./5.
     data_slices = [int(delta_time * device.sampling_rate) for device in hws]
 
     plot_channels = [
-        [dict(label=c.label, lw=lw, dt_slice=ds) for c in d.channels]
+        [dict(label=c.name, lw=lw, dt_slice=ds) for c in d.channels]
         for d, ds in zip(hws.devices, data_slices)
     ]
 
@@ -310,7 +298,8 @@ def multiple_device_acquisition(streams=('Bioplux', 'Unicorn'), chunk_size=1./5.
                          ax_kwargs=plt_kwargs,
                          make_fig=make_figure,
                          ax_plot=ax_plot,
-                         make_fig_kwargs=dict(figsize=(15, 5), n_devices=hws.n_devices),
+                         make_fig_kwargs=dict(figsize=(15, 10), n_devices=hws.n_devices),
+                         legend=ax_legend,
                          style=None,
                          ) as dm:
 

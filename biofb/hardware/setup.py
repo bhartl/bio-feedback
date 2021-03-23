@@ -54,6 +54,7 @@ class Setup(Loadable):
 
     @classmethod
     def from_streams(cls, receiver_cls, streams, stream_kwargs=(), devices_location=None, **setup_kwargs):
+        """ TODO """
         devices = []
 
         for stream in streams:
@@ -129,6 +130,7 @@ class Setup(Loadable):
 
     @property
     def data(self) -> list:
+        """ TODO """
         if self._data is None:
             if self._sample is not None:
                 return self._sample.data
@@ -140,6 +142,7 @@ class Setup(Loadable):
 
     @data.setter
     def data(self, value: list):
+        """ TODO """
         if self._data is None:
             if self._sample is not None:
                 self._sample.data = value
@@ -148,6 +151,7 @@ class Setup(Loadable):
         self._data = value
 
     def get_device_data(self, device: (Device, int, str)) -> (ndarray, None):
+        """ TODO """
         if not isinstance(device, Device):
             device = self[device]
 
@@ -160,6 +164,7 @@ class Setup(Loadable):
         raise AttributeError(f"Device {device} not found.")
 
     def set_device_data(self, value: (None, ndarray), device: (Device, int, str)):
+        """ TODO """
         if not isinstance(device, Device):
             device = self[device]
 
@@ -176,6 +181,7 @@ class Setup(Loadable):
         raise AttributeError(f"Device {device} not found.")
 
     def append_device_data(self, value: (None, ndarray), device: (Device, int, str)):
+        """ TODO """
         if not isinstance(device, Device):
             device = self[device]
 
@@ -192,6 +198,13 @@ class Setup(Loadable):
         raise AttributeError(f"Device {device} not found.")
 
     def receive_data(self, receivers: (list, None) = None, receivers_kwargs: (None, list, dict) = None):
+        """ Retrieve sample-data(-chunk) from the specified receivers related to each device
+            (blocking, until a sample-data(-chunk) has been retrieved for each device)
+
+        :param receivers:
+        :param
+
+        """
 
         if receivers is None:
             assert all(device.receiver is not None for device in self.devices), "No biofb.hardware.pipeline.Receiver specified."

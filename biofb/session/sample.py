@@ -165,8 +165,26 @@ class Sample(Loadable):
     def data(self, value: list):
         self._data = value
 
+    def load_data(self):
+        try:
+            filenames = self.filename if not isinstance(self.filename, str) else [self.filename]
+            devices = self.setup.devices
+
+            device_data = []
+            for device, filename in zip(devices, filenames):
+                data = device.load_data(filename)
+                device_data.append(data)
+
+            self._data = device_data
+
+        except (OSError, FileNotFoundError) as ex:
+            raise FileNotFoundError(f'Could not load `{self.filename}` via device: `{ex}`.')
+
+    def __str__(self):
+        return f"<Sample: Subject {self.subject.identity} at {self.acquisition_datetime}>"
+
     @property
-    def time(self) -> ndarray:
+    def time(self) -> list:
         time_data = []
 
         devices = self.setup.devices
@@ -187,7 +205,10 @@ class Sample(Loadable):
 
     @property
     def labels(self) -> list:
+        """ Devices label property
 
+        :return: List of device labels of the current setup
+        """
         labels = []
 
         for device in self.setup.devices:
@@ -196,26 +217,9 @@ class Sample(Loadable):
 
         return labels
 
-    def load_data(self):
-        try:
-            filenames = self.filename if not isinstance(self.filename, str) else [self.filename]
-            devices = self.setup.devices
-
-            device_data = []
-            for device, filename in zip(devices, filenames):
-                data = device.load_data(filename)
-                device_data.append(data)
-
-            self._data = device_data
-
-        except (OSError, FileNotFoundError) as ex:
-            raise FileNotFoundError(f'Could not load `{self.filename}` via device: `{ex}`.')
-
-    def __str__(self):
-        return f"<Sample: Subject {self.subject.identity} at {self.acquisition_datetime}>"
-
     @property
     def state(self) -> list:
+        """ TODO """
 
         # receive data from all devices
         chunk_data = self.setup.receive_data()

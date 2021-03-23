@@ -394,8 +394,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
             sampling_rate = transmitter.device['nominal_srate']
 
             if transmitter.verbose:
-                print('Start transmitting data',
-                      '-chunks' * transmit_iteratively,
+                print(f'Start transmitting data{"-chunks" * transmit_iteratively}',
                       f'of shape {shape(data)}',
                       'iteratively' * transmit_iteratively)
 

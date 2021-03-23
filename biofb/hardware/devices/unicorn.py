@@ -40,7 +40,7 @@ class Unicorn(Device):
                 ACCX, ACCY, ACCZ, GYRX, GYRY, GYRZ,
                 AKKU, COUNT, VALID)
 
-    SENSOR_TO_LABEL = dict((
+    SENSOR_TO_CHANNEL_TYPE = dict((
         (c.label, c)
         for c in CHANNELS
     ))

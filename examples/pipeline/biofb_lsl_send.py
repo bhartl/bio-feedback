@@ -2,14 +2,12 @@
 
 The applications (functions)
 
-- `bioplux_run_start_stop`
-- `bioplux_with_secured`
+- `send_bioplux`
 - `send_sample`
 
 can be executed as main programs from the <PROJECT_ROOT> folder via
 
-> python examples/pipeline/biofb_lsl_acquisition.py bioplux-run-start-stop
-> python examples/pipeline/biofb_lsl_acquisition.py bioplux-with-secured
+> python examples/pipeline/biofb_lsl_acquisition.py send_bioplux
 > python examples/pipeline/biofb_lsl_acquisition.py send-sample
 
 Using the -h argument shows the doc-string (help) for each application.
@@ -34,6 +32,15 @@ TEST_FILE_BIOPLUX = 'test/data/session/sample/bioplux/opensignals_0007800f315c_2
 TEST_FILE_SAMPLE = 'test/data/session/sample/bioplux_and_unicorn_sample.yml'
 
 
+def send_bioplux(datafile=TEST_FILE_BIOPLUX, mode='with_secured', **config):
+    if mode == 'with_secured':
+        return bioplux_with_secured(datafile=datafile, **config)
+    elif mode == 'run_start_stop':
+        return bioplux_run_start_stop(datafile=datafile, **config)
+    else:
+        raise NotImplementedError(mode)
+
+
 def bioplux_run_start_stop(datafile=TEST_FILE_BIOPLUX, **config):
 
     bioplux = Bioplux(update_device=True,
@@ -48,6 +55,7 @@ def bioplux_run_start_stop(datafile=TEST_FILE_BIOPLUX, **config):
                                      stream=STREAM_NAME_BIOPLUX,
                                      stream_type='name',
                                      transmit_data_in_chunks=False,
+                                     terminate_when_empty=True,
                                      augment_sampling_rate=True,
                                      )
 
@@ -67,21 +75,10 @@ def bioplux_run_start_stop(datafile=TEST_FILE_BIOPLUX, **config):
     for c in lsl_transmitter.channels:
         print(f'- {c}')
 
-    duration_in_seconds = len(bioplux.data)/lsl_transmitter.device["nominal_srate"]
-    show_each = 10
-    for i in range(len(bioplux.data)):
-        lsl_transmitter.push_data(bioplux.data[i])
-
-        sent_percentage = i/(len(bioplux.data)-1)
-        remaining_time = duration_in_seconds*(1.-sent_percentage)
-
-        if not (i % show_each) or sent_percentage == 1.:
-            print('\rSent {:.2f}%, {:.2f} secs remaining ...      '.format(
-                sent_percentage*100, remaining_time),
-                  end='' if sent_percentage != 1. else None)
-
-    print('Done transmitting data.')
+    lsl_transmitter.push_data(bioplux.data)
+    lsl_transmitter.join()
     lsl_transmitter.stop()
+    print('Done.')
 
 
 def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
@@ -98,6 +95,7 @@ def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
                         stream=STREAM_NAME_BIOPLUX,
                         stream_type='name',
                         transmit_data_in_chunks=False,
+                        terminate_when_empty=True,
                         augment_sampling_rate=True,
                         ) as lsl_transmitter:
 
@@ -115,20 +113,10 @@ def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
         for c in lsl_transmitter.channels:
             print(f'- {c}')
 
-        duration_in_seconds = len(bioplux.data)/lsl_transmitter.device["nominal_srate"]
-        show_each = 10
-        for i in range(len(bioplux.data)):
-            lsl_transmitter.push_data(bioplux.data[i])
+        lsl_transmitter.push_data(bioplux.data)
+        lsl_transmitter.join()
 
-            sent_percentage = i/(len(bioplux.data)-1)
-            remaining_time = duration_in_seconds*(1.-sent_percentage)
-
-            if not (i % show_each) or sent_percentage == 1.:
-                print('\rSent {:.2f}%, {:.2f} secs remaining ...      '.format(
-                    sent_percentage*100, remaining_time),
-                      end='' if sent_percentage != 1. else None)
-
-        print('Done transmitting data.')
+    print('Done.')
 
 
 def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
@@ -217,7 +205,6 @@ def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
 
 if __name__ == '__main__':
     import argh
-    argh.dispatch_commands([bioplux_run_start_stop,
-                            bioplux_with_secured,
+    argh.dispatch_commands([send_bioplux,
                             send_sample,
                             ])

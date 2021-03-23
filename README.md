@@ -301,11 +301,11 @@ You can copy (duplicate) a notebook to `<nb-name>.local.ipynb`, the duplicated n
 Here you can find the official *[Melomind website](https://www.melomind.com/en/operation/)*.
 
 ### biosignalsplux Bio-Sensor Acquisition
-Here you can find the official *[biosignals plux homepage]()*.
-We are currently using the [*biosignalsplux hub](https://plux.info/components/263-8-channel-hub-820201701.html)* and *[related sensors](https://biosignalsplux.com/products/sensors.html)* with whom we capture various bio-sensory data (EEG, ECG, EMG, EOG, EDA, ...).
+Here you can find the official *[biosignals plux homepage](https://biosignalsplux.com/)*.
+We are currently using the *[biosignalsplux hub](https://plux.info/components/263-8-channel-hub-820201701.html)* and *[related sensors](https://biosignalsplux.com/products/sensors.html)* with whom we capture various bio-sensory data (EEG, ECG, EMG, EOG, EDA, ...).
 
 The *biosignalsplux* hardware is interfaces with the *OpenSignals (r)revolution* software.  
-*OpenSignals (r)evolution* is a Python-powered web-based application.
+*[OpenSignals (r)evolution](https://biosignalsplux.com/products/software/opensignals.html)* is a Python-powered web-based application.
 The *OpenSignals (r)evolution* Documentation can be found [here](./doc/bioplux/OpenSignals_Manual.pdf).
 
 #### Installation (for linux)

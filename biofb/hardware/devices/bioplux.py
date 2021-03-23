@@ -20,7 +20,7 @@ class Bioplux(Device):
 
     NAME = 'Bioplux'
 
-    SENSOR_TO_LABEL = dict((
+    SENSOR_TO_CHANNEL_TYPE = dict((
         ("BVP", "BVP"),
         ("nSeq", "CNT"),
         ("ECG", "ECG"),
@@ -136,7 +136,7 @@ class Bioplux(Device):
             channels = []
             for sensor, label in zip(device_sensor, device_label):
                 name = sensor
-                channel_label = self.sensor_to_label(name)
+                channel_label = self.sensor_to_channel_type(name)
 
                 sampling_rate = device_sampling_rate
                 c = Channel.load(dict(name=sensor, label=channel_label, sampling_rate=sampling_rate))
@@ -165,7 +165,7 @@ class Bioplux(Device):
                     found_channel = True
 
                     if update_channels:
-                        channel.label = self.sensor_to_label(channel.name)
+                        channel.label = self.sensor_to_channel_type(channel.name)
                         channel.unit = self.LABEL_TO_UNIT[channel.label]  # if config else ''
 
                     break

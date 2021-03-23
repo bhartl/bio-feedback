@@ -26,7 +26,7 @@ class Melomind(Device):
 
     CHANNELS = (EEG1, EEG2, Q1, Q2)
 
-    SENSOR_TO_LABEL = dict((
+    SENSOR_TO_CHANNEL_TYPE = dict((
         (c.label, c)
         for c in CHANNELS
     ))
