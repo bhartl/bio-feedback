@@ -96,6 +96,9 @@ class Transmitter(Loadable, metaclass=ABCMeta):
                     verbose=self.verbose,
                     **self._kwargs)
 
+    def __str__(self):
+        return f"<{self.__class__.__name__}: {self.device['name']}-data to {self.stream}-stream>"
+
     @property
     def stream(self) -> str:
         return self._stream
@@ -348,20 +351,20 @@ class Transmitter(Loadable, metaclass=ABCMeta):
                 for i, sample in enumerate(chunk):
                     transmitter.transmit_data(sample, sleep=augmented_sleep)
 
-                    sent_percentage = (i + 1) / n_chunks
-                    if transmitter.verbose and (not i % sampling_rate or sent_percentage == 1):
+                    sent_percentage = (i + 1.) / n_chunks
+                    if transmitter.verbose and (not i % sampling_rate or sent_percentage == 1.):
                         print('\rSent {:}/{:} ({:.2f}%) samples of shape {:} ... '.format(
-                            i,
+                            i + (1 * (sent_percentage == 1.)),
                             n_chunks,
                             sent_percentage * 100,
                             sample.shape
-                        ), end='' * (sent_percentage != 1))
+                        ), end='' if (sent_percentage != 1.) else '\n')
 
             if transmitter.terminate_when_empty:
                 break
 
-        # if transmitter.verbose:
-        print(f'Transmitter {transmitter.stream} terminated')
+        if transmitter.verbose:
+            print(f'Transmitter {transmitter.stream} terminated')
 
     def start(self):
         """ Start transmitting data as background process

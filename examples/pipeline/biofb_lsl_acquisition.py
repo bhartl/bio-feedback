@@ -1,4 +1,4 @@
-""" Receiving single-device data from the Lab-Streaming-Layer using the bio-feedback framework """
+""" Receiving device data from the Lab-Streaming-Layer using the bio-feedback framework """
 
 from biofb.session import Sample, Subject
 from biofb.hardware import Setup
@@ -246,8 +246,38 @@ def sample_acquisition(stream='OpenSignals', delta_time=10, total_time=1000, ski
         print("Done with data-acquisition")
 
 
-def multiple_device_acquisition(streams=['Bioplux', 'Unicorn'], chunk_size=1./5., verbose=True,
-                                delta_time=10, total_time=15., lw=2., ylim=4.):
+def make_figure(n_devices=1, **kwargs):
+    """ helper figure generation-function for custom DataMonitor below (one axis for each device)
+
+    :param n_devices: number of devices whose data are plotted
+    :param kwargs: keyword arguments passed to plt.subplots method
+                   that generates the (fig, axes) matplotlib environment
+    """
+    f, axes = plt.subplots(n_devices, 1, **kwargs)
+    return f, axes
+
+
+def ax_plot(ax, data, channels):
+    """ helper plot-function for custom DataMonitor below:
+        all device-specific data is plotted in one device-specific axis
+
+    :param ax: matplotlib axes array (here 1D) containing an axes per device
+    :param data: list of data for each device, each device-data is a (n_samples x n_channels) array.
+    :param channels: list of [channel-information] for each device,
+                     each device specific channel-information is a list of [device-channel-info] dict.
+                     Each channel specific device-channel-info dict contains
+                     (i) key-value pairs that are forwarded to the ax.plot function for each channel-data and
+                     (ii) an element 'dt_slice', specifying the number of data that are shown, `data[-dt_slice:]`
+    """
+    for device_ax, device_data, device_channels in zip(ax, data, channels):
+        for y, c in zip(device_data, device_channels):
+            dt_slice = c.pop('dt_slice', len(y))
+            device_ax.plot(y[-dt_slice::], **c)
+            c['dt_slice'] = dt_slice
+
+
+def multiple_device_acquisition(streams=('Bioplux', 'Unicorn'), chunk_size=1./5., verbose=True,
+                                delta_time=5., total_time=10., lw=2., ylim=4.):
 
     # try to load hardware setup based on lab-streaming-layer meta-information
     hws = Setup.from_streams(
@@ -262,18 +292,9 @@ def multiple_device_acquisition(streams=['Bioplux', 'Unicorn'], chunk_size=1./5.
 
     data_slices = [int(delta_time * device.sampling_rate) for device in hws]
 
-    def make_figure(**kwargs):
-        f, axes = plt.subplots(hws.n_devices, 1, **kwargs)
-        return f, axes
-
-    def ax_plot(ax, data, channels):
-        for device_ax, device_data, device_channels, dt_slice in zip(ax, data, channels, data_slices):
-            for y, c in zip(device_data, device_channels):
-                device_ax.plot(y[-dt_slice::], **c)
-
     plot_channels = [
-        [dict(label=c.label, lw=lw) for c in d.channels]
-        for d in hws.devices
+        [dict(label=c.label, lw=lw, dt_slice=ds) for c in d.channels]
+        for d, ds in zip(hws.devices, data_slices)
     ]
 
     plt_kwargs = [
@@ -289,7 +310,7 @@ def multiple_device_acquisition(streams=['Bioplux', 'Unicorn'], chunk_size=1./5.
                          ax_kwargs=plt_kwargs,
                          make_fig=make_figure,
                          ax_plot=ax_plot,
-                         make_fig_kwargs=dict(figsize=(15, 5)),
+                         make_fig_kwargs=dict(figsize=(15, 5), n_devices=hws.n_devices),
                          style=None,
                          ) as dm:
 
@@ -307,16 +328,24 @@ def multiple_device_acquisition(streams=['Bioplux', 'Unicorn'], chunk_size=1./5.
 
             print("Done with data-acquisition, cleaning up ...")
 
-            print("Plot collected data using device-plot functions")
-            from multiprocessing import Process
+            try:
+                print("Plot collected data using device-plot functions")
+                from multiprocessing import Process
 
-            device_plot = [
-                Process(target=device.plot)
-                for device in hws.devices
-            ]
+                device_plot = [
+                    Process(target=device.plot)
+                    for device in hws.devices
+                ]
 
-            [dp.start() for dp in device_plot]
-            [dp.join() for dp in device_plot]
+                [dp.start() for dp in device_plot]
+                [dp.join() for dp in device_plot]
+
+            except Exception:
+                # the above code only works under Linux,
+                # Windows is more strict when it comes to pickling local objects (device.plot)
+
+                for device in hws.devices:
+                    device.plot()
 
     finally:
         hws.stop()
