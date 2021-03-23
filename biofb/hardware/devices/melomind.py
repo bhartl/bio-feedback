@@ -26,6 +26,11 @@ class Melomind(Device):
 
     CHANNELS = (EEG1, EEG2, Q1, Q2)
 
+    SENSOR_TO_LABEL = dict((
+        (c.label, c)
+        for c in CHANNELS
+    ))
+
     def __init__(self, name=NAME, channels=None, **kwargs):
         """Constructs a biofb Bioplux instance.
 

@@ -8,10 +8,28 @@ import time
 
 
 class LSLTransmitter(Transmitter):
-    """ Transmitter class sending data-chunks to the Lab Streaming Layer """
+    """ Transmitter class sending data-chunks to the Lab Streaming Layer
 
-    def __init__(self, stream: str, device: Loadable, channels: (None, [defaultdict]) = None,
+        See also the official
+        `example <https://github.com/chkothe/pylsl/blob/master/examples/SendData.py>`_
+        to `SendData.py` with `pylsl`.
+    """
+
+    def __init__(self, device: Loadable, stream: str, channels: (None, [defaultdict]) = None,
                  stream_type: str = 'name', verbose=True, **kwargs):
+        """ Creates an LSLTransmitter instance
+
+        :param stream: String specification of the data-stream, defaults to device name
+        :param channels: (Optional) list of device-specific bio-feedback Channel instances
+                         or a dict-representation thereof, defaults to `device.channels` of the
+                        `device` attribute 
+        :param stream_type: String, specifying the stream type,
+                            i.e. whether the provided stream is stream-name, a stream-host, a stream-type, ...
+        :param terminate_when_empty: Boolean property controlling whether a started Transmitter 
+                                     stops after transmitting all pushed data
+        :param verbose: Boolean controlling whether the Transmitter instance prints status messages (if True).
+        :param kwargs: possible kwargs to be used in derived classes
+        """
         Transmitter.__init__(self, stream=stream, device=device, channels=channels,
                              stream_type=stream_type, verbose=verbose, **kwargs)
 
@@ -21,6 +39,10 @@ class LSLTransmitter(Transmitter):
         self._init_kwargs = kwargs
 
     def to_dict(self):
+        """ Create dict representation of the current LSLTransmitter instance
+
+        :return: dict representation of the LSLTransmitter instance
+        """
         data = Transmitter.to_dict(self)
         lsl_receiver_data = dict()
 
@@ -28,20 +50,39 @@ class LSLTransmitter(Transmitter):
 
     @property
     def stream_outlet(self) -> StreamOutlet:
+        """ `pylsl.StreamOutlet` property, used to send data from the stream
+
+        Tries to establish a connection if necessary
+
+        :return: `pylsl.StreamOutlet` instance of the LSL-stream
+        """
+        if not self.is_connected:
+            self.connect()
+
         return self._stream_outlet
 
     @property
     def stream_info(self):
+        """ Stream-Info property, specifying information about the pylsl-stream
+
+        Tries to establish a connection if necessary
+
+        :return: `pylsl.Stream-Info` of the LSL-stream
+        """
+        if not self.is_connected:
+            self.connect()
+
         return self._stream_info
 
     @property
     def is_connected(self) -> bool:
+        """ Boolean property specifying whether an LSL stream connection is established """
         return self._stream_outlet is not None
 
     def connect(self):
         """ Realize an pylsl StreamOutlet based on the specified device to write data to the LSL
 
-        :return: tuplet of pylsl.StreamOutlet and pylsl.StreamInfo instances
+        :return: tuple of pylsl.StreamOutlet and pylsl.StreamInfo instances
         """
 
         info = LSLTransmitter.get_lsl_metadata(device=self.device, channels=self.channels)

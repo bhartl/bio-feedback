@@ -21,7 +21,7 @@ class TestMelomind(unittest.TestCase):
         if plot:
             melomind.plot(data=data.T, figure_kwargs={'figsize': (17, 10), 'sharex': True})
 
-    def test_load_unicorn_db(self, plot=False):
+    def test_load_melomind_db(self, plot=False):
         db_fname = "data/session/sample/melomind/db-melomind-01.yml"
 
         from biofb.io import SessionDatabase as Database
@@ -41,6 +41,9 @@ class TestMelomind(unittest.TestCase):
         for s in db.samples:
             mm = s.setup.devices[0]
             self.assertIsInstance(mm, Melomind)
+
+            for channel, desired_channel in zip(mm.channels, Melomind.CHANNELS):
+                self.assertIsInstance(channel, desired_channel.__class__)
 
             d = mm.data
             for i, c in enumerate(mm.channels):

@@ -15,18 +15,6 @@ class Device(Loadable):
     SENSOR_TO_LABEL = {}
     LABEL_TO_UNIT = defaultdict(lambda *args, **kwargs: '', [])
 
-    @classmethod
-    def sensor_to_label(cls, sensor_name: str):
-        """ Hash-Table to map channels to special channel labels. """
-
-        if sensor_name in (None, (), {}, ""):
-            return 'CUSTOM'
-
-        if sensor_name not in cls.SENSOR_TO_LABEL:
-            return cls.sensor_to_label(sensor_name[:-1])
-
-        return cls.SENSOR_TO_LABEL[sensor_name]
-
     def __init__(self, name: str, channels: (tuple, list) = (), description: str = "", load_data_kwargs=(), data=None,
                  **parameters):
         """ Constructs a bio-controller hardware `Device` instance.
@@ -375,4 +363,16 @@ class Device(Loadable):
         self.append_data(data_chunk)
 
         return timestamp, data_chunk
+
+    @classmethod
+    def sensor_to_label(cls, sensor_name: str):
+        """ Hash-Table to map channels to special channel labels. """
+
+        if sensor_name in (None, (), {}, ""):
+            return 'CUSTOM'
+
+        if sensor_name not in cls.SENSOR_TO_LABEL:
+            return cls.sensor_to_label(sensor_name[:-1])
+
+        return cls.SENSOR_TO_LABEL[sensor_name]
 
