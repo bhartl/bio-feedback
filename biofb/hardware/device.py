@@ -135,10 +135,10 @@ class Device(Loadable):
 
     @property
     def data(self) -> (ndarray, None):
-        """ device-data property
+        """ `Device`-data property
 
-        - if the device is used without a setup, the device hosts its own data array
-        - if the device is used in a hardware setup, the setup data is updated
+        - if the `Device` is used without a `Setup`, the device hosts its own data array
+        - if the `Device` is used in a hardware `Setup`, the `Setup` data is updated
         """
         if self._data is None:
             if self._setup is not None:
@@ -148,10 +148,10 @@ class Device(Loadable):
 
     @data.setter
     def data(self, value: (ndarray, None)):
-        """ set device-data to provided values
+        """ Set `Device`-data to provided values
 
-        - if the device is used without a setup, the device hosts its own data array
-        - if the device is used in a hardware setup, the setup data is updated
+        - If the `Device` is used without a `Setup`, the device hosts its own data array
+        - If the `Device` is used in a hardware `Setup`, the `Setup` data is updated
         """
         if self._data is None:
             if self._setup is not None:
@@ -161,10 +161,10 @@ class Device(Loadable):
         self._data = asarray(value) if value is not None else value
 
     def append_data(self, value: (ndarray, None)):
-        """ append device data with provided values
+        """ Append device data with provided values
 
-        - if the device is used without a setup, the device hosts its own data array
-        - if the device is used in a hardware setup, the corresponding setup data is updated
+        - If the device is used without a setup, the device hosts its own data array
+        - If the device is used in a hardware setup, the corresponding setup data is updated
         """
         if value is None:
             return
@@ -239,6 +239,13 @@ class Device(Loadable):
                     return obj
                 elif device_name.lower() in cls_name.lower():
                     return obj
+                
+            elif device_name == 'ALIASES' and isinstance(device_name, dict):
+                for device_alias, device_cls in obj.items():
+                    if cls_name.lower() in device_alias.lower():
+                        return device_cls
+                    elif device_alias.lower() in cls_name.lower():
+                        return device_cls
 
         if cls is not Device:
             raise ModuleNotFoundError(f'could not identify specific Device based on cls_name `{cls_name}`')

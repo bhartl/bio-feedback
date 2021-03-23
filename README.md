@@ -7,7 +7,7 @@ It allows
 - capturing data with bio-sensory hardware (mostly 
   via the *[Melomind heaset](https://www.melomind.com/en/operation/)*,
   via the *[biosignalsplux hub](https://plux.info/components/263-8-channel-hub-820201701.html)* and *[related sensors](https://biosignalsplux.com/products/sensors.html)* 
-or via the *[g.tec Unicorn EEG Device](https://www.unicorn-bi.com/?gclid=Cj0KCQiAyoeCBhCTARIsAOfpKxjuuKF57_Ng2IqhxVD_UgluFzqpDAXGvv8eJGDZtPF1wmyVdLI_YLgaAmf8EALw_wcB)*) [*Note: life acquisition is an open issue*]
+or via the *[g.tec Unicorn EEG Device](https://www.unicorn-bi.com/?gclid=Cj0KCQiAyoeCBhCTARIsAOfpKxjuuKF57_Ng2IqhxVD_UgluFzqpDAXGvv8eJGDZtPF1wmyVdLI_YLgaAmf8EALw_wcB)*)
 - opening and handling data from data-acquisition sessions of above devices,
 - preprocessing, postprocessing and analysing the data, and
 - providing/generating feedback signals via agent instances
@@ -91,26 +91,31 @@ It primarily contains a list of devices.
 The general datastructures to handle a specific device is given by the `biofb.hardware.Device` class.
 Each device captures data from several channels which is usually stored/provided in a `numpy` array.
 For a more convenient data-handling of the different channels, each device contains a list of channel objects.
-Each device also is able to perform data-acquisition, which is synchronized in hardware `Setup`.
+Each device also is able to perform data-acquisition using `biofb.pipeline.Receiver` configurations, which is synchronized in hardware `Setup`, or in a `Sample` session.
 
-*[Note: this is work in progress].*
-
-The general datastructures to handle a specific channel form a specific device is given by the `biofb.hardware.Channel` class.
+The general datastructures to handle a specific channel from a specific device is given by the `biofb.hardware.Channel` class.
 This class has a link to its associated `Device` and can in that way access the channel-specific device data (which is one numpy array).
 
 In the sub-package `biofb.hardware.devices`, more specific `Device`-classes are implemented that are related to more specific devices (e.g., Melomind, Bioplux and Unicorn).
 These different device-specific classes allow capturing and handling the device-specific data.
-
-*[Note: device specific data-file handling works (captured with the respective device-specific third-party software).]*
-
-*[Note: data-acquisition is still work in progress.]*
 
 In the sub-package `biofb.hardware.channels`, more specific `Channel`-classes are implemented that are related to more specific bio-sensory channels (e.g., EEG, ECG, EOG, EDA, ...).
 These different channel-specific classes allow task-specific and targeted preprocessing (filtering, stabilizing, etc.) and postprocessing operations (transformations, analysis, feature extraction, quality predictions, etc.).
 
 *[Note: channel handling works, i.e. each channel of a device can be related to a specific channel class in `biofb.hardware.channels` via labels and class names.]*
 
-*[Note: channel specific data-handling is work in progress, documentations and literature can be found on the device-specific websites and also in the related `biofb.signal.channel` sub-package, which contains(will contain) implementations of channel specific functionalities.]*
+*[Note: channel specific data-handling using filters, etc., is work in progress, documentations and literature can be found on the device-specific websites and also in the related `biofb.signal.channel` sub-package, which contains(will contain) implementations of channel specific functionalities.]*
+
+### The `biofb.pipeline` sub-package
+
+Here, data `Reiceiver` and `Transmitter` classes are implemented that can be used to receive and send data from different bio-sensory devices (data-acquisition that can be used in Python).
+
+We mainly rely on the open-source [*Lab Streaming Layer*](https://github.com/sccn/labstreaminglayer) and the [pylsl](https://pypi.org/project/pylsl/) package to directly access the data form third party bio-sensory hardware in the `biofb` framework.
+
+### The `biofb.visialize` sub-package
+Here, data visualization tools are implemented.
+
+- The `biofb.visialize.DataMonitor` allows to plot (in a non-blocking way) time-series data. 
 
 ### The `biofb.signal` sub-package
 
@@ -154,14 +159,14 @@ The `/data` folder is explicitly excluded from the git-repository via `.gitignor
 
 Alternatively, the `data` folder can be shared via a peer-to-peer [Syncthing](https://syncthing.net/) client.
 
-s*[Note: Surely, there is room for improvement how to share our data. I'm happy for suggestions (e.g. an automized way how to download the data from the Dropbox or a separate git-repository).]*
+*[Note: Surely, there is room for improvement how to share our data. I'm happy for suggestions (e.g. an automized way how to download the data from the Dropbox or a separate git-repository).]*
 
 ## Documentation `/doc`
 
 Documentation about third-party hardware and software-packages (user-manuals and data-sheets) can be found in the `/doc` folder. 
 
 
-## Setup
+## Installation and Setup
 
 ### Create virtual environment (venv)
 First, make sure Anaconda is installed. Then create a new virtual environment (venv):
@@ -241,7 +246,17 @@ python -m unittest discover -s .
 
 ## Demos and Examples
 
-Demos, tutorials and examples how to use the code framework should be provided in the `test/biofb_unittest/`, `test/examples` `/notebooks` packages.
+Demos, tutorials and examples how to use the code framework should be provided in the `test/biofb_unittest/` and `examples` packages.
+
+### Examples in `examples`
+
+Several simple examples are implemented here, see the respective [README](examples/REAMDE.md) for details.
+
+### Jupyter-Demo Notebooks in `/examples/notebooks`
+There is some demo-notebooks used to demonstrate data-handling/analysis/visualization in `/examples/notebooks` for the *Melomind*, *g.tec Unicorn* and the *Bioplux* bio-sensory hardware.
+
+Please do not commit changes made simple due to execution of the notebooks.
+You can copy (duplicate) a notebook to `<nb-name>.local.ipynb`, the duplicated notebook with `.local` is excluded from git via `/.gitignore`. In that way you can quickly experiment around. 
 
 ### Unittests in `test/biofb_unittest/<same structure as biofb-packages>`
 The module-structure of `biofb_unittest` is equivalent to the module structure of `biofb`.
@@ -260,52 +275,26 @@ This requires to either
 The reason for this is relative path-relations to the `test/data` folder.
 (Some fallbacks to an execution directly from `<PROJECT_ROIOT>` are implemented.)
 
-### Simple examples in `test/examples/<same structure as biofb-module>`
-A simple, manually controlled keystroke agent for playing muiscal notes via a `biofb.controller.audio.KeyAgent` or via a `biofb.controller.audio.KeySession` can be found in `test/examples/controller/audio`. 
-These should be run from within the project's `root` directory (*use the `-h` for help*):
-
-- a simple `KeyAgent` implementation:
-```bash
-python test/examples/controller/audio/key_agent.py
-```
-
-- a `KeySession` implementation replaying audio-arrays
-```bash
-python test/examples/controller/audio/key_session.py main-array
-```
-
-- a `KeySession` implementation replaying audio-recordings (wave-files)
-```bash
-python test/examples/controller/audio/key_session.py main-array
-```
-
-
-
-Another example where verbal audio recordings can manually be replayed via a `biofb.controller.verbal.HillAgent` wrapped in a `biofb.controller.audio.KeySession` is located in `test/examples/controller/verbal`. 
-The example program should be run from within the project's `root` directory (*use the `-h` for help*).
-
-*[Note: the usage as library from within the console is WIP.]*
-
-### Jupyter-Demo Notebooks in `/test/notebooks`
-Please do not commit changes made simple due to execution of the notebooks.
-You can copy (duplicate) a notebook to `<nb-name>.local.ipynb`, the duplicated notebook with `.local` is excluded from git via `/.gitignore`. In that way you can quickly experiment around. 
-
 ## Third-Party Bio-Sensory Data-Acquisition Systems
-
-## Hardware
-
-*[THIS SECTION IS WORK IN PROGRESS]*
 
 ### Melomind
 
 Here you can find the official *[Melomind website](https://www.melomind.com/en/operation/)*.
 
+This is a very simple head-set device with 2 EEG sensores and 2 related quality signals.
+Its goal is to guide participants towards deep relaxation via audio-feedback.
+We (RB, BH, TH) have the impression, that this does not work properly: 
+the software-feedback often displays states of relaxation when people are highly focused -- so the feedback loop of *Melomind* might be improvable. 
+
+We modified the *Melomind* [Android demo-app](https://github.com/mbt-administrator/DemoSDK.Android) such that data are stored to a file on the Android device running the demo-app (not included in the bio-feedback package -- we are not sure if we will proceed with this hardware).
+
 ### biosignalsplux Bio-Sensor Acquisition
 Here you can find the official *[biosignals plux homepage](https://biosignalsplux.com/)*.
 We are currently using the *[biosignalsplux hub](https://plux.info/components/263-8-channel-hub-820201701.html)* and *[related sensors](https://biosignalsplux.com/products/sensors.html)* with whom we capture various bio-sensory data (EEG, ECG, EMG, EOG, EDA, ...).
 
-The *biosignalsplux* hardware is interfaces with the *OpenSignals (r)revolution* software.  
-*[OpenSignals (r)evolution](https://biosignalsplux.com/products/software/opensignals.html)* is a Python-powered web-based application.
+Channel specific signal analysis should be implemented in the package [`biofb/signals/channels`](biofb/signals/channels) (procedural) and on a higher-level in [`biofb/hardware/channels`](biofb/hardware/channels). 
+
+The *biosignalsplux* hardware is interfaces with the *[OpenSignals (r)evolution](https://biosignalsplux.com/products/software/opensignals.html)* software, a Python-powered web-based application.
 The *OpenSignals (r)evolution* Documentation can be found [here](./doc/bioplux/OpenSignals_Manual.pdf).
 
 #### Installation (for linux)
@@ -318,15 +307,12 @@ sudo apt install ./OpenSignals_revolution_ubuntu_amd64.deb
 4) The *OpenSignals (r)evolution* interface should be *available as application* (as `OpenSignals`) or through the *Terminal* (as `opensignals`).
 
 ### g.tec Unicorn EEG Device
-As EEG device we rely on the *[g.tec Unicorn](https://www.unicorn-bi.com/?gclid=Cj0KCQiAyoeCBhCTARIsAOfpKxjuuKF57_Ng2IqhxVD_UgluFzqpDAXGvv8eJGDZtPF1wmyVdLI_YLgaAmf8EALw_wcB)*
+We rely on the *[g.tec Unicorn](https://www.unicorn-bi.com/?gclid=Cj0KCQiAyoeCBhCTARIsAOfpKxjuuKF57_Ng2IqhxVD_UgluFzqpDAXGvv8eJGDZtPF1wmyVdLI_YLgaAmf8EALw_wcB)*
+as 8-channel EEG-device.
 
-## Software
-
-*[THIS SECTION IS WORK IN PROGRESS]*
+## Third-Party Software
 
 ### Melomind *Demo App*
-
-
 
 Ideally, we manage to stream the data from the Melomind *Demo App* to the 
 [**Lab Streaming Layer**](https://github.com/sccn/labstreaminglayer) and 
@@ -334,7 +320,7 @@ capture the data in Python using the `pylsl` library (see below).
 
 ### *OpenSignals (r)evolution*
 
-The *OpenSignals (r)evolution* allows to configure the hardware setup of a *biosingalsplux* device, i.e., the channel setup.
+The *OpenSignals (r)evolution* allows to configure the hardware setup of a *biosingalsplux* device, i.e., the channel configuration.
 
 *OpenSignals (r)evolution* is supported  
 - on **Windows 10** and
@@ -350,16 +336,23 @@ the `pylsl` library (see below).
 
 ### *g.tec Unicorn Suit Recorder*
 
-The *g.tec Unicorn Suit* comes with a **Recorder** Application. This application requires a Software License (to be purchased).
+The *g.tec Unicorn Suit* comes with a **Recorder** Application. 
+The *Unicorn Recorder* provides a **quality-assessment** of the EEG channels, which is **most likely** based on comparing the **variance of each channel over an extended time-period** (only high-end devices provide quality assessment via impedance values of each electrode).
+Further, it allows to filter the EEG signals using a **notch** and a **bandpass** filter.
+
+The *Unicorn Recorder* application requires a Software License (to be purchased).
 
 The data from the *g.tec Unicorn Suit* can be acquired via the *g.tec* **Python API**, which also requires a Software Lience (to be purchased).
+
+*[Note: We therefore should implement the basic filters (notch and bandpass) in the bio-feedback framework]*
+
 
 Alternatively, 
 - a **c-API exists**, which can be used to generate a custom data-acquisition python module (e.g. via boost-python)
 - or the data from the unicorn are acquired via the [Lab Streaming Layer](https://github.com/sccn/labstreaminglayer) 
   (see below).
 
-### Putting All Together: *Lab Streaming Layer* (LSL)
+## Putting All Together: *Lab Streaming Layer* (LSL)
 
 LSL is an overlay network for real-time exchange of time series between applications, 
 most often used in research environments. LSL has clients for many languages (such as Python) 
@@ -369,7 +362,7 @@ and platforms (such as Max, Windows or Linux) that are compatible with each othe
 **ATTENTION: Privacy and Security issues might be a problem for the production state. 
 LSL streams without encryption on serveral ports without authentication necessities.**
 
-#### LSL Recorder
+### LSL Recorder
 
 Via the [LSL Recorder](https://github.com/labstreaminglayer/App-LabRecorder) -- a stand-alone Application -- 
 data from different devices (which are streaming to the LSL) can be acquired synchronously.
@@ -378,7 +371,7 @@ Here the [Release List](https://github.com/labstreaminglayer/App-LabRecorder/rel
 The LSL Recorder stores data in a binary *xdf* format, which can be accessed in Python via `pyxdf` 
 (here the [official github repo](https://github.com/xdf-modules/pyxdf)).
 
-#### The `pylsl` Package
+### The `pylsl` Package
 
 `pylsl` is a [Python interface](https://pypi.org/project/pylsl/) to the Lab Streaming Layer (LSL) 
 which can be installed via 
@@ -396,10 +389,10 @@ Note that these can be run directly from the commandline with (e.g.)
 python -m pylsl.examples.SendStringMarkers
 ```
 
-#### *Melomind*
+### *Melomind*
 [**TODO**: Data-streaming from the modified Demo-App to the LSL.]
 
-#### *OpenSignals (r)evolution*
+### *OpenSignals (r)evolution*
 How to setup the *OpenSignals (r)evolution* data-streaming to the LSL can be 
 found in the [manual](doc/bioplux/OpenSignals%20LSL%20Manual.pdf):
 - Click on the *OpenSignals (r)evolution* **Settings** button.
@@ -411,7 +404,7 @@ found in the [manual](doc/bioplux/OpenSignals%20LSL%20Manual.pdf):
   or via the `pylsl` library directly in Python.
 
 
-#### *g.tec Unicorn*
+### *g.tec Unicorn*
 
 To stream the *g.tec Unicorn* data to the [Lab Streaming Layer](https://github.com/sccn/labstreaminglayer),
 the **UnicornLSL client**  needs to be installed.
@@ -452,6 +445,8 @@ Also see the [youtube-tutorial](https://www.youtube.com/watch?v=l18lJ7MGU38) on 
 or the project has not been copied to the appropriate path (post build scripts will fail). 
 Check the paths to the referenced Unicorn Suite libraries in the project file settings, 
 as well as in the post build action.
+
+## Additional Dependencies and Sources
 
 ### Audio Interactions (*Linux*)
 

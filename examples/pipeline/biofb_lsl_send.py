@@ -33,6 +33,14 @@ TEST_FILE_SAMPLE = 'test/data/session/sample/bioplux_and_unicorn_sample.yml'
 
 
 def send_bioplux(datafile=TEST_FILE_BIOPLUX, mode='with_secured', **config):
+    """ Send Bioplux data within `datafile` to the Lab Streaming Layer
+
+    :param datafile: File-path containing Bioplux data
+    :param mode: Either `with_secured` or `run_start_stop`, triggering the call of
+                 either `bioplux_with_secured` or `bioplux_run_start_stop`, see respective docstrings.
+    :param config: (Optional) Bioplux Device construction keyword-arguments
+    """
+
     if mode == 'with_secured':
         return bioplux_with_secured(datafile=datafile, **config)
     elif mode == 'run_start_stop':
@@ -42,15 +50,24 @@ def send_bioplux(datafile=TEST_FILE_BIOPLUX, mode='with_secured', **config):
 
 
 def bioplux_run_start_stop(datafile=TEST_FILE_BIOPLUX, **config):
+    """ Send Bioplux data within `datafile` in a background process to the Lab Streaming Layer
+    using the manual start() and stop() mechanism of the `biofb.pipeline.LSLTransmitter`.
 
+    :param datafile: File-path containing Bioplux data
+    :param config: (Optional) Bioplux Device construction keyword-arguments
+    """
+
+    # instantiate Bioplux device
     bioplux = Bioplux(update_device=True,
                       update_channels=True,  # sets correct channels according to file
                       update_sampling_rate=True,  # sets sampling rates
                       **config
                       )
 
+    # load Bioplux data
     bioplux.data = bioplux.load_data(datafile)
 
+    # create LSLTransmitter instance
     lsl_transmitter = LSLTransmitter(device=bioplux,
                                      stream=STREAM_NAME_BIOPLUX,
                                      stream_type='name',
@@ -59,8 +76,10 @@ def bioplux_run_start_stop(datafile=TEST_FILE_BIOPLUX, **config):
                                      augment_sampling_rate=True,
                                      )
 
+    # manually start background process for streaming
     lsl_transmitter.start()
 
+    # print stream info
     print(f'streaming virtual data from file {datafile} '
           f'to LSL on stream {lsl_transmitter.stream}'
           f'at a sampling rate of {lsl_transmitter.device["nominal_srate"]}.')
@@ -75,22 +94,41 @@ def bioplux_run_start_stop(datafile=TEST_FILE_BIOPLUX, **config):
     for c in lsl_transmitter.channels:
         print(f'- {c}')
 
+    # push data to the stream which are sent to the LSL in the lsl_transmitter._pusher
+    # background process, communication via lsl_transmitter._queue
     lsl_transmitter.push_data(bioplux.data)
+
+    # do something else ...
+
+    # wait for data-transmission to finish
     lsl_transmitter.join()
+
+    # manually stop background processes
     lsl_transmitter.stop()
+
     print('Done.')
 
 
 def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
+    """ Send Bioplux data within `datafile` in a background process to the Lab Streaming Layer
+    using the `biofb.pipeline.LSLTransmitter` in a `with` block that takes care of the start()
+    and stop() mechanism.
 
+    :param datafile: File-path containing Bioplux data
+    :param config: (Optional) Bioplux Device construction keyword-arguments
+    """
+
+    # instantiate Bioplux device
     bioplux = Bioplux(update_device=True,
                       update_channels=True,  # sets correct channels according to file
                       update_sampling_rate=True,  # sets sampling rates
                       **config
                       )
 
+    # load Bioplux data
     bioplux.data = bioplux.load_data(datafile)
 
+    # start streaming in a background process, stream is stopped when `with` block is done
     with LSLTransmitter(device=bioplux,
                         stream=STREAM_NAME_BIOPLUX,
                         stream_type='name',
@@ -99,6 +137,7 @@ def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
                         augment_sampling_rate=True,
                         ) as lsl_transmitter:
 
+        # print stream info
         print(f'streaming virtual data from file {datafile} '
               f'to LSL on stream {lsl_transmitter.stream}'
               f'at a sampling rate of {lsl_transmitter.device["nominal_srate"]}.')
@@ -113,26 +152,43 @@ def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
         for c in lsl_transmitter.channels:
             print(f'- {c}')
 
+        # push data to the stream which are sent to the LSL in the lsl_transmitter._pusher
+        # background process, communication via lsl_transmitter._queue
         lsl_transmitter.push_data(bioplux.data)
+
+        # do something else ...
+
+        # wait for data-transmission to finish
         lsl_transmitter.join()
 
     print('Done.')
 
 
 def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
+    f"""
+    :param sample_loadable: Sample object or (path-to) dict-like object which can be loaded as Sample object, 
+    defaults to {TEST_FILE_SAMPLE}
+    :param offset: (i) Boolean controlling whether the data-arrays defined in the Sample are streamlined,  
+                   i.e., if the number of sample-points (considering the sampling rate) are aligned such that
+                   the transmission time for each data-array is as equal as possible;
+                   or (ii) integer list, defining the offset for each data-array.
+    """
 
+    # Initialize Sample
     sample = Sample.load(sample_loadable)
     sample.load_data()
 
+    # Generate LSLTransmitter for every device in the Sample
     transmitter = []
     try:
         for i, device in enumerate(sample.setup.devices):
+            # Device specific transmitter
             t = LSLTransmitter(device=device,
                                stream=f'{device.__class__.__name__}',
                                stream_type='name',
                                augment_sampling_rate=True,
                                terminate_when_empty=True,
-                               verbose=(i == 0),
+                               verbose=(i == 0),  # only show status messages for one transmitter for simplicity
                                )
 
             print('---')
@@ -154,7 +210,7 @@ def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
 
         # print verbosity information (we only allow one stream to be verbose)
         verbose_transmitter = [t for t in transmitter if t.verbose]
-        verbose_slice = 0 if len(verbose_transmitter) == 1 else slice()
+        verbose_slice = 0 if len(verbose_transmitter) == 1 else slice(None, None, None)
         print(f'\nTransmitter{"s" * (len(verbose_transmitter) > 1)}',
               f'{[str(t) for t in verbose_transmitter][verbose_slice]}',
               f'print{"s" * (len(verbose_transmitter) == 1)} status messages')
@@ -172,7 +228,7 @@ def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
                 offset = [(nd - min(n_data))*d.sampling_rate
                           for d, nd in zip(sample.setup.devices, n_data)]
 
-                # adjust as good as possible given the different smaping rates
+                # adjust as good as possible given the different sampling rates
                 offset = [int(o + (d.sampling_rate - o % d.sampling_rate)) if o != 0 else 0
                           for o, d in zip(offset, sample.setup.devices)]
 

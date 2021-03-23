@@ -54,12 +54,37 @@ class Setup(Loadable):
 
     @classmethod
     def from_streams(cls, receiver_cls, streams, stream_kwargs=(), devices_location=None, **setup_kwargs):
-        """ TODO """
+        """ Initialize `Setup` instance based on the `biofb.pipeline.Receiver` multi-stream-configuration,
+        each defined stream is related to a bio-feedback `Device`.
+
+        :param receiver_cls: `Receiver` type used to initialize all `Receiver` instances related to the
+                             available `Device` streams.
+        :param streams: List of string identifiers for the available `Device` streams.
+                        Each stream will is related to a `Device` in the hardware `Setup`.
+        :param stream_kwargs: (i) List of `Receiver` keyword-arguments or (ii) dict representing global `Receiver`
+                              keyword-arguments used to initialize `Receiver` instances related to the available
+                              `Device` streams ..
+        :param devices_location: `Device`-lookup-module locations used to search for possible specific `Device`s
+                                 to load these `Device`s such as `Bioplux` or `Unicorn` (defaults to
+                                 `biofb.hardware.devices`).
+        :param setup_kwargs: Keyword-arguments used to initialize the hardware `Setup`.
+
+        :return: `Setup` instance based on the `biofb.pipeline.Receiver` stream-configuration
+        """
         devices = []
 
-        for stream in streams:
-            receiver = receiver_cls(stream=stream, **dict(stream_kwargs))
+        try:
+            stream_kwargs = dict(stream_kwargs)
+        except TypeError:
+            pass
 
+        for i, stream in enumerate(streams):
+
+            # initialize Receiver instance
+            kwargs = stream_kwargs if isinstance(stream_kwargs, dict) else stream_kwargs[i]
+            receiver = receiver_cls(stream=stream, **kwargs)
+
+            # initialize device, try to load specific device based on stream-name
             device = Device.load(
                 value={'name': stream,
                        'class': Device.find_devices_cls(stream),
@@ -83,6 +108,7 @@ class Setup(Loadable):
         return cls.load(value={'devices': devices, **setup_kwargs})
 
     def stop(self):
+        """ Stop potentially started data-`Receiver`'s """
         if self._receivers is not None:
             for r in self._receivers:
                 r.stop()
@@ -130,7 +156,11 @@ class Setup(Loadable):
 
     @property
     def data(self) -> list:
-        """ TODO """
+        """ `Setup`-data property: a list of device-data
+
+        - if the `Setup` is used without a `Sample`, the `Setup` hosts its own data list of device-data arrays
+        - if the `Setup` is used in a `Sample`-session, the `Sample`-data is updated
+        """
         if self._data is None:
             if self._sample is not None:
                 return self._sample.data
@@ -142,7 +172,11 @@ class Setup(Loadable):
 
     @data.setter
     def data(self, value: list):
-        """ TODO """
+        """ set `Device`-data list as the `Setup`-data property
+
+        - if the `Setup` is used without a `Sample`, the `Setup` hosts its own data list of device-data arrays
+        - if the `Setup` is used in a `Sample`-session, the `Sample`-data is updated
+        """
         if self._data is None:
             if self._sample is not None:
                 self._sample.data = value
@@ -151,7 +185,11 @@ class Setup(Loadable):
         self._data = value
 
     def get_device_data(self, device: (Device, int, str)) -> (ndarray, None):
-        """ TODO """
+        """ Get data of specific `Device`
+
+        :param device: `Device` instance, label or id
+        :return: `Device`-data array or None
+        """
         if not isinstance(device, Device):
             device = self[device]
 
@@ -164,7 +202,11 @@ class Setup(Loadable):
         raise AttributeError(f"Device {device} not found.")
 
     def set_device_data(self, value: (None, ndarray), device: (Device, int, str)):
-        """ TODO """
+        """ Set data of specific `Device`
+
+        :param value: `Device`-specific data array
+        :param device: `Device` instance, label or id
+        """
         if not isinstance(device, Device):
             device = self[device]
 
@@ -181,7 +223,11 @@ class Setup(Loadable):
         raise AttributeError(f"Device {device} not found.")
 
     def append_device_data(self, value: (None, ndarray), device: (Device, int, str)):
-        """ TODO """
+        """ Append/Concatenate data to specific `Device`-data
+
+        :param value: `Device`-specific (to be appended) data array
+        :param device: `Device` instance, label or id
+        """
         if not isinstance(device, Device):
             device = self[device]
 
@@ -198,19 +244,33 @@ class Setup(Loadable):
         raise AttributeError(f"Device {device} not found.")
 
     def receive_data(self, receivers: (list, None) = None, receivers_kwargs: (None, list, dict) = None):
-        """ Retrieve sample-data(-chunk) from the specified receivers related to each device
-            (blocking, until a sample-data(-chunk) has been retrieved for each device)
+        """ Retrieve sample-data(-chunk) from the specified associated list of receivers related to
+            each device (blocking, until a sample-data(-chunk) has been retrieved for each device)
 
-        :param receivers:
-        :param
+        :param receivers: (Optional) list of `Receiver` instances/types which are assigned to the
+                          related `Devices` of the hardware `Setup` (see also `receivers_kwargs`
+                          argument).
+        :param receivers_kwargs: (Optional) dict or list of kwargs used in the `Receiver` initialization.
+                                 Only used if `receivers` is specified.
+                                 If dict is provided, all `receivers` are instantiated with the same
+                                 `receivers_kwargs`; otherwise, each element of `receivers` is related
+                                 to the corresponding element in `receivers_kwargs`
+        :return: list of `Device.receive_data()` results, i.e.,
+                 list of tuples of (timestamps_device_i, sample_chunk_device_i) arrays, specifying
+                 the timestamps and retrieved device data.
 
+        The data-retrieval of each Device is performed in separate `multiprocessing.Process`es
+        (using the `Retriever`s' background data-retrieval functionality, eventually, the `stop()` method
+        should be called).
         """
 
         if receivers is None:
-            assert all(device.receiver is not None for device in self.devices), "No biofb.hardware.pipeline.Receiver specified."
+            assert all(device.receiver is not None for device in self.devices), "No `biofb.hardware.pipeline." \
+                                                                                "Receiver` specified."
 
         else:
-            assert all(device.receiver is None for device in self.devices), "Only one receiver perdevice can be specified, close connections fist."
+            assert all(device.receiver is None for device in self.devices), "Only one receiver perdevice can be " \
+                                                                            "specified, close connections fist."
             for i, device in enumerate(self.devices):
                 receiver = receivers[i]
 

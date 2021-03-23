@@ -1,6 +1,6 @@
 from biofb.controller.verbal import HillAgent
 from biofb.controller.audio import KeySession
-import ruamel_yaml as yaml
+import yaml as yaml
 
 
 class DummySample(object):
