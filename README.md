@@ -417,7 +417,7 @@ Demos, tutorials and examples how to use the code framework should be provided i
 
 #### Examples in `examples`
 
-Several simple examples are implemented here, see the respective [README](examples/REAMDE.md) for details.
+Several simple examples are implemented here, see the respective [README](examples/README.md) for details.
 
 #### Jupyter-Demo Notebooks in `/examples/notebooks`
 There is some demo-notebooks used to demonstrate data-handling/analysis/visualization in `/examples/notebooks` for the *Melomind*, *g.tec Unicorn* and the *Bioplux* bio-sensory hardware.
