@@ -54,6 +54,10 @@ Also check-out the [Installationand Setup of the `biofb` Python Package](#instal
 *	Implementation of the feedback loop (MP, DA)
 
 ## Experimental Design (Third-Party Bio-Sensory Hardware and Software)
+
+![Sketch of bio-sensory hardware devices](doc/biofb/fig/devices.svg "Used bio-sensory devices")
+*Sketch of the three third-party bio-sensory hardware devices we currently use in the project.*
+
 ### Melomind
 The *[Melomind](https://www.melomind.com/en/operation/)* is a bluetooth head-set device with 2 EEG sensors and 2 related quality signals.
 Its goal is to guide participants towards deep relaxation via audio-feedback.
@@ -73,7 +77,8 @@ The *OpenSignals (r)evolution* software allows to configure the hardware setup o
 
 The *OpenSignals (r)evolution* Documentation can be found [here](./doc/bioplux/OpenSignals_Manual.pdf).
 
-Documentation and example data analysis for the different channels can be found [here](https://biosignalsplux.com/products/sensors.html) for each sensor (choose sensor and click on Downloads to access jupyter-notebooks and sample data).
+Documentation and example data analysis for the different channels can be found [here](doc/bioplux/sensors) for each sensor or check the [biosignalsplux sensors'-page](https://biosignalsplux.com/products/sensors.html):
+choose the required sensor and click on the DOWNLOADS menu to access jupyter-notebooks and sample data.
 
 [comment]: <> (#### Installation &#40;for linux&#41;)
 
@@ -157,7 +162,9 @@ The *biosignalsplux* hardware comes with a **foot-switch** (attached to channel 
 - At the **end** of the measurement, the controller presses the foot-switch several times, marking the end of the session.
 
 The data-handling and analysis is performed via our own `biofb`-package (see below), here a sketch of the measurmenet-to-analysis flow:
-[TODO]
+
+![Sketch of bio-sensory hardware devices](doc/biofb/fig/devices-acquisition-version_0.svg "Used bio-sensory devices")
+*Sketch of individual data-acquisition of the *Melomind*, *biosingalsplux* and the *g.tec Unicorn* devices via the *Melomind Demo-App*, the *OpenSignals (r)evolution* and the *g.tec Unicorn Recorder*, respectively. Note: The *Melomind* acquisition is grayed out since we are not sure if we should proceed with this hardware.*
 
 ### Version 0.1: synchronized data-acquisition via the `biofb`-package
 To increase the synchronizability, scalability and accessablility of the bio-sensory data, we rely on the *Lab-Streaming-Layer*.
@@ -165,10 +172,15 @@ To increase the synchronizability, scalability and accessablility of the bio-sen
 We implemented an LSL-data-receiver functionality in the `biofb`-package that allows us to receive data from all devices (with potentially different sampling rates) synchronously (see the [Data-Analysis Section](#data-analysis) below and the [pipeline-examples](examples/pipeline)).
 
 The acquired data can then be further preprocessed and analysed before being 
-- either stored to a *xdf*-file (TODO, standard binary file-format for LSL applications, alternatively we could use hdf5)
+- either stored to a *xdf*-file (*TODO*, standard binary file-format for LSL applications, alternatively we could use hdf5)
 - or directly used by a controller to perform feedback actions. 
 
-Here a sketch of the LSL-data-acquisition using the `biofb`-package
+Here a sketch of the LSL-data-acquisition using the `biofb`-package:
+
+![Sketch of bio-sensory hardware devices](doc/biofb/fig/devices-acquisition-version_0.1.svg "Used bio-sensory devices")
+*Sketch of Lab-Streaming-Layer (LSL) data-acquisition of the *Melomind*, *biosingalsplux* and the *g.tec Unicorn* devices via the *Melomind Demo-App*, the *OpenSignals (r)evolution* and the *g.tec Unicorn Recorder*, respectively. 
+Note: The different devices might have different sampling rates. The LSL communication takes care of this (and also adds time-stamps to the data which are streamed into the LSL from the different devices). 
+Also Note: The *Melomind* LSL-binding needs to be implemented (Java), the acquisition is grayed out since we are not sure if we should proceed with this hardware.*
 
 ### Data: `/data`
 
@@ -192,12 +204,24 @@ Alternatively, the `data` folder can be shared via a peer-to-peer [Syncthing](ht
 
 The base datatype of the `biofb` package is the `biofb.session.sample` class.
 
-It brings together
+This class brings together
 - `biofb.pipeline` data-acquisition of a `biofb.hardware.setup` (which comprises a list of `biofb.hardware.device` instances, each containing again a list of `biofb.hardware.channel` objects for each bio-signal)
 - for a `biofb.session.subject` (the participant whose bio-data is captured)
 - in a well-defined `biofb.session.setting` (the overall scope of the experiment, e.g. a test-session, an in-person session or a feedback-session)
 - and controlled by a `biofb.session.controller` (a human person or a machine).
 
+Here a sketch, how the data-handling of the `Sample`, `Setup`, `Device` and `Channel` classes gears into each other:
+![Sketch of biofb-data handling](doc/biofb/fig/sample-data-structure.svg "Data handling of the biofb-session package")
+*Sketch of the data-handing of the `biofb` `Sample` `Setup`, `Device` and `Channel`classes: 
+The `data` property of a `Sample` instance is, equivalent to the `data` property of a `Setup` instance, a list of `Device`-specific `data` arrays; 
+a `Sample`-instance can (additionally to a `Setup` instance) load `Setup`-data from files.
+The `data` property of a `Device` instance is the time-series data of captured data from the respective bio-sensory hardware, i.e., a `numpy npdarray` of shape `NumberOfSamples x NumberOfChannels`.
+Each data-channel of a `Device` instance can be accessed via its `channels` property, a list of `Channel` insances related to the columns in the `data` property of the `Device` instance. 
+The respective `Channel` instances can access (in a read only mode) the corresponding `data` columns from their associated `Device` instance.
+Data acquired at different time-steps are colored in different gray-scales, data of different channels of a specific (related to different sensors) have differently color, devices can have different sampling rates and different numbers of channels.*
+
+To load acquired `Sample` instances, `biofb.session.Sample.load(<dict-like-sample or path-to-former>)` can be called, which takes care of eventually loading the data from provided data-files, see the following sketch: 
+![Sketch of loading sample-data](doc/biofb/fig/sample-data-load_from_files.svg "Sample-data loading using the biofb package")
 
 #### The `biofb.io` sub-package
 
@@ -220,6 +244,8 @@ Other meta-data such as `location` or `date-time` of a session can/should also b
 Further, we will also need feedback information about the quality of the session by the participants and their personal experiences.
 
 The handling of these different aspects of a bio-feedback sample is realized/united in the `biofb.session.sample` class.
+
+See also the [Measurement of Experiment - Section](#measurement-of-experiments) for a sketch of the experimental bio-data acquisition setup.
 
 #### The `biofb.hardware` sub-package
 
@@ -250,6 +276,17 @@ Here, data `Reiceiver` and `Transmitter` classes are implemented that can be use
 
 We mainly rely on the open-source [*Lab Streaming Layer*](https://github.com/sccn/labstreaminglayer) and the [pylsl](https://pypi.org/project/pylsl/) package to directly access the data form third party bio-sensory hardware in the `biofb` framework.
 
+Here a sketch how data-acquisition might work from third-party devices to the `biofb` framework
+![Sketch of receiving sample-data](doc/biofb/fig/sample-data-receive.svg "Sample-data acquisition using the biofb package")
+*Data are produced by the *biosingalsplux* and *g.tec Unicorn* devices (top left).
+The data can be accessed via the *OpenSignals (r)evolution* and the *Unicorn LSL* client, which broadcast corresponding *OpenSignals* and *Unicorn* (central left) streams to the *Lab-Streaming-Layer* (bottom left).
+The `biofb.session.Setup` class allows to load a `biofb` `Setup` directly from a stream (central bottom), if the `Device` types are known (cf. `biofb.hardware.devices` and `biofb.pipeline`).
+Such a `Setup` can then receive dta from multiple devices simultaneously and stores the results in its `data` property (right).
+Check also the [bio-feedback pipeline examples](examples/pipeline) for practical implementations of data-streaming applications.
+Note: the different devices might have different sampling rates.
+The color-coding and data-indexing of the code snippet in the center might be slightly misleading.
+Data are usually received for a fixed time-interval in chunks that are related to the sampling-rates of the different devices (i.e. 250 data-samples from the Unicorn and 500 data-samples from the biosignalsplux per second).*
+
 #### The `biofb.visialize` sub-package
 Here, data visualization tools are implemented.
 
@@ -269,6 +306,9 @@ The `biofb.controller` sub-package provides the main feedback loop of the `bio-f
 - The `biofb.controller.Session` comprises a pro-active `biofb.controller.Agent` and a participant, interacting via measured `biofb.session.Sample` bio-sensory data.
 - The `Agent` proposes `actions` to be performed on a participant (e.g., it selects audio signals to be replayed).
 - This will change the `state` of the participant (i.e., the captured `state` of the bio-signals in a `biofb.session.Sample`).
+
+Here a Sketch:
+![Sketch of feedback loop](doc/biofb/fig/controller-feedback-loop.svg "Sketch of feedback loop")
 
 Once again:
 
