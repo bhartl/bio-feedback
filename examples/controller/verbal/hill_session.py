@@ -45,7 +45,7 @@ def main(action_successive=False, path="data/controller/hill/hill_agent_keymap.y
         # print info
         print(hill_agent)
 
-        session.apply()
+        session.run()
 
     except KeyboardInterrupt:
         print('Stopped')

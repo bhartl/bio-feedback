@@ -1,4 +1,4 @@
-from biofb.controller.audio import KeyAgent
+from biofb.controller import KeyAgent
 from numpy import ndarray
 import os.path
 

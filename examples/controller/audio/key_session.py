@@ -88,7 +88,7 @@ def main_array(duration: float = 0.5, sample_rate: int = 44100, frequencies=FREQ
     print(agent)
 
     try:
-        session.apply()
+        session.run()
 
     except KeyboardInterrupt:
         print('Stopped')
@@ -165,7 +165,7 @@ def main_wav(duration: float = 0.5, sample_rate: int = 44100, frequencies=FREQUE
     print(agent)
 
     try:
-        session.apply()
+        session.run()
 
     except KeyboardInterrupt:
         print('Stopped')

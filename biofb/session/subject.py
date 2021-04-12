@@ -36,7 +36,8 @@ class Subject(Loadable):
         self._id_file = None
         self.id_file = id_file
 
-        self._respect_privacy = respect_privacy
+        self._respect_privacy = None
+        self.respect_privacy = respect_privacy
 
     @property
     def identity(self) -> (int, str):

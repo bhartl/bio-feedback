@@ -12,5 +12,3 @@ Extracting characteristic sounds, such as
 
 can be used by a controller to guide the bio-signal state of a participant towards a desired value. """
 
-from .key_agent import KeyAgent
-from .key_session import KeySession

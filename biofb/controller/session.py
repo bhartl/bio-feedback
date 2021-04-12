@@ -144,7 +144,7 @@ class Session(Loadable, metaclass=ABCMeta):
         """
         pass
 
-    def apply(self) -> None:
+    def run(self) -> None:
         """ Controller main loop.
 
         - Actions are proposed according to the current state of the subject's acquired `sample`s.
@@ -178,7 +178,7 @@ class Session(Loadable, metaclass=ABCMeta):
         assert not self.running, "No other feedback_loop session must be running."
 
         self._feedback_loop_daemon = threading.Thread(name='session-controller-loop',
-                                                      target=self.apply,
+                                                      target=self.run,
                                                       **threading_kwargs)
         self._feedback_loop_daemon.start()
 

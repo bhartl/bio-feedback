@@ -2,9 +2,22 @@ from __future__ import annotations
 from biofb.io import Loadable
 from os import path
 import yaml
+from collections import OrderedDict
+from pydoc import locate
 
 
 class SessionDatabase(Loadable):
+
+    META_DATA_MAP = OrderedDict((
+        ("channels", "biofb.hardware.Channel"),
+        ("devices", "biofb.hardware.Device"),
+        ("setups", "biofb.hardware.Setup"),
+        ("subjects", "biofb.session.Subject"),
+        ("controllers", "biofb.session.Controller"),
+        ("locations", "biofb.session.Location"),
+        ("settings", "biofb.session.Setting"),
+    ))
+
     def __init__(self, samples: (list, tuple) = (), **kwargs):
 
         Loadable.__init__(self)
@@ -89,6 +102,40 @@ class SessionDatabase(Loadable):
                 raise fnfe
 
             return SessionDatabase.load(path.abspath(filename), **kwargs)
+
+    @staticmethod
+    def load_metadata(filename: str, meta_data_map: (dict, ) = None) -> (dict, list):
+        """ Load """
+        assert path.isfile(path.abspath(filename))
+        meta_data = Loadable.load_dict_like(filename)
+        meta_data = meta_data.get(['meta_data'], meta_data)  # try nested meta_data structure
+
+        meta_data_evaluated = {}
+
+        if meta_data_map is None:
+            meta_data = SessionDatabase.META_DATA_MAP.items()
+
+        for k, k_cls in meta_data_map:
+            try:
+                meta_data_cls = locate(k_cls) if not isinstance(k_cls, type) else k_cls
+
+                assert hasattr(meta_data_cls, 'load')
+
+                try:
+                    v_list_of_dicts = meta_data[k]  # try nested meta_data structure
+                except ValueError:
+                    v_list_of_dicts = meta_data
+
+                for v_dict in v_list_of_dicts:
+                    v_cls = meta_data_cls.load(v_dict)
+                    v_list = meta_data_evaluated.get(k, [])
+                    v_list.append(v_cls)
+                    meta_data_evaluated[k] = v_list
+
+            except KeyError:
+                pass
+
+        return meta_data_evaluated
 
     def __add__(self, other: (SessionDatabase, tuple, list)) -> SessionDatabase:
         self_samples = [s for s in self.samples]

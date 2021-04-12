@@ -1,6 +1,6 @@
 from biofb.session import Sample
-from biofb.controller.audio import KeyAgent
 from biofb.controller import Session
+from biofb.controller import KeyAgent
 from numpy import ndarray, shape
 import simpleaudio as sa
 from biofb.io import wave_file
@@ -70,17 +70,6 @@ class KeySession(Session):
         action_map = self.load_dict_like(value)
         self._action_map = action_map
 
-    @property
-    def replaying(self) -> bool:
-        """ Checks, whether the current replay object is currently playing.
-
-        :return: `True`, if the current replay object is currently playing, `False` otherwise.
-        """
-        if self._replay is None:
-            return False
-
-        return self._replay.is_playing()
-
     def step(self, action: (ndarray, tuple, object)) -> tuple:
         """ Replay (recorded) audio-controller via speaker, mapped via `action`.
 
@@ -97,14 +86,14 @@ class KeySession(Session):
         done = action is None
 
         if not done:
-            self.replay(action=action)
+            self.apply(action=action)
 
         state = self.sample.state
         info = dict()
 
         return done, state, info
 
-    def replay(self, action) -> (sa.PlayObject, None):
+    def apply(self, action) -> object:
         """ Replay controller data or controller file
 
         :param action: Suggested `action` by `Agent`,
@@ -122,39 +111,13 @@ class KeySession(Session):
 
         assert key is not None
 
-        if self.replaying:
-            if self._action_successive:  # resume if new action must not overwrites old action
-                return
-
-            if action_map is None:  # check if cancel key was pressed
-                self._replay.stop()
-                return
-
         try:
-            audio = self.action_map[action_map]
-
-            if isinstance(audio, str):
-                try:
-                    audio_obj = sa.WaveObject.from_wave_file(abspath(audio))
-                    self._replay = audio_obj.play()
-                except Exception as ex:
-
-                    # audio file can have unrecognizable format
-                    if not self._convert_on_wave_error:
-                        print(f'ERROR: An exception occurred: {type(ex)} {ex}')
-                        print(wave_file.available_formats())
-                        return None
-
-                    # transform audio-format and relabel action_map
-                    new_wav_file = wave_file.transform_format(audio, '.wav', '-converted.wav')
-                    self.action_map[action_map] = new_wav_file
-
-                    return self.replay(action)
+            to_apply = self.action_map[action_map]
+            if hasattr(to_apply, '__call__'):
+                return to_apply()
 
             else:
-                self._replay = sa.play_buffer(audio, min([shape(audio)[0], 1]), 2, **self._replay_kwargs)
+                return eval(to_apply)
 
         except Exception as ex:
             raise ex
-
-        return self._replay

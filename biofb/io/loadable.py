@@ -1,6 +1,8 @@
 import yaml
 import json
 import os.path
+import csv
+import inspect
 
 
 class Loadable(object):
@@ -13,6 +15,17 @@ class Loadable(object):
 
     def __init__(self, *args, **kwargs):
         pass
+
+    def to_dict(self):
+        signature = inspect.signature(self.__init__)
+        parameters = [p for p in signature.parameters]
+        # defaults = [signature.parameters[p].default for p in parameters]
+
+        # return {p: getattr(self, p)
+        #         for p, d in zip(parameters, defaults)
+        #         if getattr(self, p) is not d and getattr(self, p) != d}
+
+        return {p: getattr(self, p) for p in parameters}
 
     @classmethod
     def load(cls, value):
@@ -50,9 +63,16 @@ class Loadable(object):
 
         elif isinstance(value, str):
             if os.path.exists(value):
-                with open(value, 'r') as s:
-                    loaded = yaml.safe_load(s)
-
+                try:
+                    loaded = json.loads(value)
+                except ValueError:
+                    try:
+                        with open(value, 'r') as s:
+                            loaded = yaml.safe_load(s)
+                    except:
+                        with open(value, 'r') as s:
+                            data = [line for line in csv.DictReader(s)]
+                            loaded = Loadable.list_of_dicts_to_dict_of_lists(data)
             else:
                 try:
                     loaded = json.loads(value)
@@ -73,3 +93,35 @@ class Loadable(object):
                                          f"of type `{type(value)}`."
 
         return loaded
+
+    @staticmethod
+    def list_of_dicts_to_dict_of_lists(data: list):
+        list_of_dicts = {}
+        for k, v in [(key, d[key]) for d in data for key in d]:
+            values = list_of_dicts.get(k, [])
+            values.append(v)
+            list_of_dicts[k] = values
+
+        return list_of_dicts
+
+    @staticmethod
+    def dict_of_lists_to_list_of_dicts(data: dict):
+        keys = list(data.keys())
+        list_of_dicts = [
+            {k: vi for k, vi in zip(keys, row_data)}
+            for row_data in zip(*(data[k] for k in keys))
+        ]
+        return list_of_dicts
+
+    @classmethod
+    def from_terminal(cls):
+        signature = inspect.signature(cls.__init__)
+        parameters = [p for p in signature.parameters][1:]
+        defaults = [signature.parameters[p].default for p in parameters]
+
+        dict_repr = {}
+        for p, d in zip(parameters, defaults):
+            value = input(f'{p} ({d}): ')
+            dict_repr[p] = value
+
+        return cls.load(dict_repr)

@@ -85,7 +85,7 @@ class TestSession(unittest.TestCase):
         )
 
         self.assertEqual(session.n_steps, 0)
-        session.apply()
+        session.run()
 
         self.assertTrue(session.done)
         self.assertTrue(session.sample.state >= imax)
