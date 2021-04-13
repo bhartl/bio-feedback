@@ -62,7 +62,7 @@ class Session(Loadable, metaclass=ABCMeta):
         self._feedback_loop_daemon = None
 
     def __enter__(self):
-        self.run()
+        self.start()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
@@ -147,7 +147,7 @@ class Session(Loadable, metaclass=ABCMeta):
         """
         pass
 
-    def run(self) -> None:
+    def run(self, data_monitor=None) -> None:
         """ Controller main loop.
 
         - Actions are proposed according to the current state of the subject's acquired `sample`s.
@@ -167,6 +167,9 @@ class Session(Loadable, metaclass=ABCMeta):
             done, state, info_dict = self.step(action)  # update sample state based on agent action
             if self.delay != 0.:
                 sleep(self.delay)
+
+            if data_monitor is not None:
+                data_monitor.data = [d.T for d in self.sample.data]
 
         self.done = done
         return

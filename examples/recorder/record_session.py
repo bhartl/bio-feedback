@@ -284,12 +284,7 @@ def monitor_session(session,
                      style=None,
                      ) as dm:
 
-        # receive data
-        while not session.done:
-            # list of (timestamps, samples)-tuples for each device
-            dm.data = [d.T for d in hws.data]
-            time.sleep(0.5)
-
+        session.run(data_monitor=dm)
 
 def perform_session(sample_path_pattern, setting, setup, subject):
 
@@ -316,16 +311,14 @@ def perform_session(sample_path_pattern, setting, setup, subject):
                               description='',
                               )
 
+    monitor_session(session=session)
+
     try:
-        session.start()
-        time.sleep(0.5)
-        monitor_session(session=session)
+        sample.setup.stop()
+    except:
+        pass
 
-    finally:
-        session.sample.setup.stop()
-        session.stop()
-
-    return session
+    return sample
 
 
 def main(sample_path_pattern='data/session/sample/biofb-<TIMESTAMP>.hdf5',
@@ -373,7 +366,7 @@ def main(sample_path_pattern='data/session/sample/biofb-<TIMESTAMP>.hdf5',
     print()
 
     print('---')
-    session = perform_session(sample_path_pattern=sample_path_pattern,
+    sample = perform_session(sample_path_pattern=sample_path_pattern,
                              setting=setting,
                              subject=subject,
                              setup=hardware_setup)
@@ -381,11 +374,11 @@ def main(sample_path_pattern='data/session/sample/biofb-<TIMESTAMP>.hdf5',
     print()
 
     print('---')
-    comment_sample(session.sample)
+    comment_sample(sample)
     print('---')
     print()
 
-    session.dump()
+    sample.dump()
 
 
 if __name__ == '__main__':
