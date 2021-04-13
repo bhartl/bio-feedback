@@ -118,3 +118,6 @@ class KeySession(Session):
 
         except Exception as ex:
             raise ex
+
+    def dump(self):
+        pass

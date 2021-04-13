@@ -229,3 +229,6 @@ class Sample(Loadable):
 
         # return only values, not time-stamps
         return [value for time, value in chunk_data]
+
+    def dump(self):
+        pass

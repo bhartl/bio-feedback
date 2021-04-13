@@ -1,9 +1,12 @@
 from biofb.hardware import Setup
 from biofb.session import Subject, Location, Setting, Sample, Controller
-from biofb.controller import KeyAgent
+from biofb.controller.audio import AudioKeySession
+from biofb.controller import Agent, KeyAgent
+from biofb.visualize import DataMonitor
 from biofb.pipeline import LSLReceiver
 import os
 import pandas as pd
+import time
 
 
 KNOWN_CONTROLLERS = "data/session/db_meta_data/controller.csv"
@@ -222,7 +225,111 @@ def connect_to_devices(streams=('Bioplux', 'Unicorn'), chunk_size=1./5., verbose
     return hardware_setup
 
 
-def main(streams=('Bioplux', 'Unicorn'),
+def new_sample(sample_path_pattern, setting, setup, subject):
+    sample = Sample(
+        setting=setting,
+        subject=subject,
+        setup=setup,
+        filename=sample_path_pattern.strip()
+    )
+
+    return sample
+
+
+def comment_sample(sample):
+    print('SAMPLE COMMENTS MENU')
+
+    comments = sample.comments
+
+    while True:
+        comment = input('add sample comment: ').strip()
+
+        if comment == "":
+            break
+
+        comments.append(comment)
+
+    sample.comments = comments
+    return comments
+
+
+def monitor_session(session,
+                    chunk_size=1./5., delta_time=5., total_time=10., lw=2., ylim=4.,
+                    ):
+
+    from examples.pipeline.biofb_lsl_acquisition import make_figure, ax_plot, ax_legend
+
+    hws = session.sample.setup
+    data_slices = [int(delta_time * device.sampling_rate) for device in hws]
+
+    plot_channels = [
+        [dict(label=c.name, lw=lw, dt_slice=ds) for c in d.channels]
+        for d, ds in zip(hws.devices, data_slices)
+    ]
+
+    plt_kwargs = [
+        {'set_xlim': ((0, delta_time * device.sampling_rate), {}),
+         'set_ylim': ((-abs(ylim), abs(ylim)), {}),
+         'set_xlabel': (('steps' if (i == (hws.n_devices - 1)) else None, ), {}),
+         'set_ylabel': ((device.name,), {})}
+        for i, device in enumerate(hws.devices)
+    ]
+
+    with DataMonitor(channels=plot_channels,
+                     ax_kwargs=plt_kwargs,
+                     make_fig=make_figure,
+                     ax_plot=ax_plot,
+                     make_fig_kwargs=dict(figsize=(15, 10), n_devices=hws.n_devices),
+                     legend=ax_legend,
+                     style=None,
+                     ) as dm:
+
+        # receive data
+        while not session.done:
+            # list of (timestamps, samples)-tuples for each device
+            dm.data = [d.T for d in hws.data]
+            time.sleep(0.5)
+
+
+def perform_session(sample_path_pattern, setting, setup, subject):
+
+    sample = new_sample(sample_path_pattern=sample_path_pattern,
+                        setting=setting,
+                        setup=setup,
+                        subject=subject)
+
+    controller = setting.controller
+
+    if not isinstance(controller, Agent):
+        agent = KeyAgent(
+            name='session_agent',
+            description='tracks start and stop of a session',
+            keymap_action={'s': "print('start')", 'e': "print('event')"},
+            verbose=False,
+        )
+    else:
+        agent = controller
+
+    session = AudioKeySession(sample=sample,
+                              agent=agent,
+                              name='biofb session',
+                              description='',
+                              )
+
+    try:
+        session.start()
+        time.sleep(0.5)
+        monitor_session(session=session)
+
+    finally:
+        session.sample.setup.stop()
+        session.stop()
+
+    return session
+
+
+def main(sample_path_pattern='data/session/sample/biofb-<TIMESTAMP>.hdf5',
+         streams=('Bioplux', 'Unicorn'),
          chunk_size=1.,
          verbose=True
          ):
@@ -236,7 +343,7 @@ def main(streams=('Bioplux', 'Unicorn'),
     print('3.) Specify the hardware setup data streams')
     print('4.) Start the session')
     print('5.) Perform your experiments')
-    print('6.) End the session and store the acquired data')
+    print('6.) End the session, add sample comments and store the acquired data')
     print('---')
     print()
 
@@ -253,9 +360,32 @@ def main(streams=('Bioplux', 'Unicorn'),
     print()
 
     print('---')
+    export_path = input(f'chosen Sample export-pattern ({sample_path_pattern}): ').strip()
+    if export_path == "":
+        export_path = sample_path_pattern
+    sample_path_pattern = export_path
+    print('---')
+    print()
+
+    print('---')
     hardware_setup = connect_to_devices(streams=streams, chunk_size=chunk_size, verbose=verbose)
     print('---')
     print()
+
+    print('---')
+    session = perform_session(sample_path_pattern=sample_path_pattern,
+                             setting=setting,
+                             subject=subject,
+                             setup=hardware_setup)
+    print('---')
+    print()
+
+    print('---')
+    comment_sample(session.sample)
+    print('---')
+    print()
+
+    session.dump()
 
 
 if __name__ == '__main__':

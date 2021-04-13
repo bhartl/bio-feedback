@@ -56,7 +56,10 @@ class KeyAgent(Agent):
         self._keymap_cancel_action = '.'
         self.verbose = verbose
 
-    def __del__(self):
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.terminate()
 
     def __str__(self):

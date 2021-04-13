@@ -61,7 +61,10 @@ class Session(Loadable, metaclass=ABCMeta):
 
         self._feedback_loop_daemon = None
 
-    def __del__(self):
+    def __enter__(self):
+        self.run()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
     @property
@@ -192,7 +195,11 @@ class Session(Loadable, metaclass=ABCMeta):
         if not self.running:
             return
 
-        self._feedback_loop_daemon.terminate()
-        self._feedback_loop_daemon.join(self.timeout)
-        self._feedback_loop_daemon = None
+        try:
+            self._feedback_loop_daemon.terminate()
+            self._feedback_loop_daemon.join(self.timeout)
+            self._feedback_loop_daemon = None
+        except:
+            pass
+
         return
