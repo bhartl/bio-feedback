@@ -1,5 +1,5 @@
 from biofb.controller.verbal import HillAgent
-from biofb.controller.audio import KeySession
+from biofb.controller.audio import AudioKeySession as KeySession
 import yaml as yaml
 
 

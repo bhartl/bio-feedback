@@ -1,10 +1,7 @@
 from biofb.session import Sample
 from biofb.controller import Session
 from biofb.controller import KeyAgent
-from numpy import ndarray, shape
-import simpleaudio as sa
-from biofb.io import wave_file
-from os.path import abspath
+from numpy import ndarray
 
 
 class KeySession(Session):

@@ -12,3 +12,4 @@ Extracting characteristic sounds, such as
 
 can be used by a controller to guide the bio-signal state of a participant towards a desired value. """
 
+from .audio_key_session import AudioKeySession

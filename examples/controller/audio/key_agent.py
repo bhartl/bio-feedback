@@ -1,6 +1,6 @@
 import numpy as np
 import simpleaudio as sa
-from biofb.controller.audio import KeyAgent
+from biofb.controller import KeyAgent
 
 # calculate note frequencies based on A1
 FREQUENCIES = {

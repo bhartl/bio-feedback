@@ -1,6 +1,6 @@
 import numpy as np
-from biofb.controller.audio import KeyAgent
-from biofb.controller.audio import KeySession
+from biofb.controller import KeyAgent
+from biofb.controller.audio import AudioKeySession as KeySession
 import os
 from scipy.io import wavfile
 

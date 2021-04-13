@@ -1,4 +1,5 @@
 from biofb.io import Loadable
+from pydoc import locate
 
 
 class Controller(Loadable):
@@ -39,3 +40,19 @@ class Controller(Loadable):
 
     def __str__(self):
         return f"<Controller: {self.name}>"
+
+    @classmethod
+    def load(cls, value):
+        try:
+            assert isinstance(value, dict)
+            specific_cls = value.pop('class')
+            specific_kwargs = value.pop('kwargs', {})
+
+            if isinstance(specific_cls, str):
+                specific_cls = locate(specific_cls)
+
+            return specific_cls.load(dict(**value, **specific_kwargs))
+
+        except (AssertionError, KeyError, AttributeError):
+
+            return super().load(value)

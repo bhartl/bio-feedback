@@ -56,9 +56,9 @@ class TestKeystrokeAgent(unittest.TestCase):
             self.keymap_audio[chr(ord('a') + i)] = audio
             self.keymap_freqs[chr(ord('a') + i)] = key
 
-    @patch('biofb.controller.audio.key_agent.KeyAgent.get_pressed_key', return_value=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 0, Key.esc])
+    @patch('biofb.controller.key_agent.KeyAgent.get_pressed_key', return_value=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 0, Key.esc])
     def test_control_notes(self, *args, loud=False, **kwargs):
-        from biofb.controller.audio import KeyAgent
+        from biofb.controller import KeyAgent
         import numpy as np
         import simpleaudio as sa
 

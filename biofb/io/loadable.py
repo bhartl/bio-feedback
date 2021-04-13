@@ -25,7 +25,14 @@ class Loadable(object):
         #         for p, d in zip(parameters, defaults)
         #         if getattr(self, p) is not d and getattr(self, p) != d}
 
-        return {p: getattr(self, p) for p in parameters}
+        dict_repr = {}
+        for p in parameters:
+            try:
+                dict_repr[p] = getattr(self, p)
+            except AssertionError:
+                pass
+
+        return dict_repr
 
     @classmethod
     def load(cls, value):
@@ -41,15 +48,31 @@ class Loadable(object):
             return value
 
         if not isinstance(value, dict):
-            value = cls.load_dict_like(value)
+
+            try:
+                if not isinstance(value, tuple):
+                    value = cls.load_dict_like(value)
+                else:
+                    # if tuple is provided, use as arguments
+                    value = cls.load_dict_like(*value)
+            except AssertionError:
+
+                # check, whether representation of dict or tuple has been passed via value
+                v = value
+                if isinstance(value, str):
+                    value = eval(value)
+                    assert not isinstance(value, str), f"Did not understand value `{v}` to load {cls} instance."
+
+                return cls.load(value)
 
         return cls(**value)
 
     @classmethod
-    def load_dict_like(cls, value: (str, dict)) -> dict:
+    def load_dict_like(cls, value: (str, dict), index=None) -> dict:
         """ Load dict-like object via provided value (path, yaml, json, repr, ...)
 
         :param value: Dict-like object or path to dict-like representation (path, yaml, json, repr, ...)
+        :param index: (Optional) index of dict to load from list of dicts (e.g. form csv-file)
         :return: Dictionary representation of value
         """
 
@@ -69,10 +92,16 @@ class Loadable(object):
                     try:
                         with open(value, 'r') as s:
                             loaded = yaml.safe_load(s)
+
+                        assert isinstance(loaded, dict) or isinstance(loaded, list)
+
                     except:
                         with open(value, 'r') as s:
                             data = [line for line in csv.DictReader(s)]
-                            loaded = Loadable.list_of_dicts_to_dict_of_lists(data)
+                            if index is not None:
+                                loaded = data[index]
+                            else:
+                                loaded = Loadable.list_of_dicts_to_dict_of_lists(data)
             else:
                 try:
                     loaded = json.loads(value)
@@ -114,14 +143,43 @@ class Loadable(object):
         return list_of_dicts
 
     @classmethod
-    def from_terminal(cls):
+    def from_terminal(cls, avoid=(), **defaults):
         signature = inspect.signature(cls.__init__)
-        parameters = [p for p in signature.parameters][1:]
-        defaults = [signature.parameters[p].default for p in parameters]
+        parameters = [p for p in signature.parameters if p not in avoid][1:]
+        defaults = [defaults.get(p, signature.parameters[p].default) for p in parameters]
 
         dict_repr = {}
         for p, d in zip(parameters, defaults):
-            value = input(f'{p} ({d}): ')
-            dict_repr[p] = value
+            value = input(f'{p}' + f' ({d})'*(d is not inspect._empty) + ': ')
+            dict_repr[p] = value.strip() if value.strip() != '' else d
 
         return cls.load(dict_repr)
+
+    @staticmethod
+    def get_first_in(d, keys, lower=True, upper=True, exchangeable=(' ', '_', '-')):
+        for key in keys:
+            if key in d:
+                return d[key]
+
+            if lower and key.lower() in d:
+                return d[key.lower()]
+
+            if upper and key.upper() in d:
+                return d[key.upper()]
+
+            for exchange in exchangeable:
+                for exchange_with in exchangeable:
+                    if exchange == exchange_with:
+                        continue
+
+                    key = key.replace(exchange, exchange_with)
+                    if key in d:
+                        return d[key]
+
+                    if lower and key.lower() in d:
+                        return d[key.lower()]
+
+                    if upper and key.upper() in d:
+                        return d[key.upper()]
+
+        raise KeyError(keys)

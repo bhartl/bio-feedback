@@ -20,8 +20,8 @@ class KeyAgent(Agent):
                  description: str = "",
                  keymap_action: (str, dict, None) = None,
                  action_map: (str, dict, None) = None,
-                 sleep: (float) = 1e-3,
-                 verbose: (bool) = True
+                 sleep: float = 1e-3,
+                 verbose: bool = True
                  ):
         """ Construct a `KeyAgent` instance.
 
@@ -66,7 +66,6 @@ class KeyAgent(Agent):
 
         keystroke_str += [f'(Stop replay with \'{self._keymap_cancel_action}\', '
                           f'Stop Agent with \'{self._keymap_terminate}\')']
-
 
         longest = max([len(s) for s in keystroke_str])
         keystroke_str = ['-'*longest] + keystroke_str + ['-'*longest]
