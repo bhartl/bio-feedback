@@ -1,6 +1,9 @@
-from numpy import ndarray
+from numpy import ndarray, asarray, nan
 from biofb.session import Controller
 from abc import ABCMeta, abstractmethod
+from time import time
+import os
+import h5py
 
 
 class Agent(Controller, metaclass=ABCMeta):
@@ -27,6 +30,7 @@ class Agent(Controller, metaclass=ABCMeta):
         :param description: Description of the agent (str, defaults to "").
         """
 
+        self._action_data = []
         Controller.__init__(self, name=name, description=description)
 
     @property
@@ -48,6 +52,14 @@ class Agent(Controller, metaclass=ABCMeta):
     def __str__(self):
         return f"<Feedback-Agent: {self.name}>"
 
+    @property
+    def action_data(self):
+        return self._action_data
+
+    @action_data.setter
+    def action_data(self, value):
+        self._action_data.append((time(), value))
+
     @abstractmethod
     def action(self, state: (dict, ndarray)) -> (ndarray, tuple, object, None):
         """ Proposed `action` of the `Controller`-`Agent` (according to its internal policy) based on the `state`
@@ -61,3 +73,27 @@ class Agent(Controller, metaclass=ABCMeta):
                  Also no action (None) can (should possibly) be taken.
         """
         pass
+
+    def get_action(self, state):
+        action = self.action(state)
+        self.action_data = action
+        return action
+
+    def dump_actions(self, filename, file_format=None, mode='w'):
+        if file_format is None:
+            __, extension = os.path.splitext(filename)
+            if extension.lower() in ('.h5', '.hdf5', '.h5py'):
+                file_format = 'h5'
+            elif extension.lower() in ('.json'):
+                file_format = 'json'
+                raise NotImplementedError(f'file_format {file_format}')
+            else:
+                file_format = 'yml'
+                raise NotImplementedError(f'file_format {file_format}')
+
+        with h5py.File(filename, mode) as h5:
+            g = h5.create_group('actions')
+            for i, (timestamp, action) in enumerate(self.action_data):
+                g[f'{i}/timestamp'] = timestamp
+                for j, action_value in enumerate(action if hasattr(action, '__iter__') else [action]):
+                    g[f'{i}/{j}'] = (action_value if action is not None else nan)

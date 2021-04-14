@@ -75,7 +75,7 @@ class Receiver(Loadable, metaclass=ABCMeta):
         if self._queue is not None:
             while not self._queue.empty():
                 try:
-                    self._queue.get(timeout=0.001)
+                    self._queue.get(timeout=1e-12)
                 except (TimeoutError, Empty):
                     pass
 

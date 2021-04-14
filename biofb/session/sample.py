@@ -6,6 +6,7 @@ from numpy import ndarray, asarray, arange
 from datetime import datetime
 from datetime import date
 from datetime import time
+import h5py
 
 
 class Sample(Loadable):
@@ -42,14 +43,14 @@ class Sample(Loadable):
         self._setting = None
         self.setting = setting
 
-        self._filename = None
-        self.filename = filename
-
         self._timestamp = None
         self.timestamp = timestamp
 
         self._comments = None
         self.comments = comments
+
+        self._filename = None
+        self.filename = filename
 
         self._data = None
 
@@ -59,6 +60,24 @@ class Sample(Loadable):
 
     @filename.setter
     def filename(self, value: str):
+        """ Filename for sample-data
+
+        :param value: filename of data-files. The value may contain wildcards for sample properties of
+                      the form `<PROPERTY_OF_SAMPLE>` (such as `timestamp` or `acquisition_datetime`
+                      (capitalized !) and modify value with corresponding property values.
+        """
+
+        if isinstance(value, dict):
+            value = Loadable.dict_to_list(value)
+
+        # try to check wildcards of the form `<PROPERTY_OF_SAMPLE>`
+        # such as `timestamp` or `acquisition_datetime` (capitalized)
+        # and modify value with corresponding property values
+        for p in [p for p in dir(self.__class__) if isinstance(getattr(self.__class__, p), property)]:
+            wildcard = f'<{p.upper()}>'
+            if wildcard in value:
+                value = value.replace(wildcard, str(getattr(self, p)))
+
         self._filename = value
 
     @property
@@ -69,6 +88,7 @@ class Sample(Loadable):
     def timestamp(self, value: (int, float, None)):
         if value is None:
             value = datetime.now().timestamp()
+
         elif isinstance(value, str):
             converted = None
             formats = [
@@ -144,6 +164,9 @@ class Sample(Loadable):
 
     @comments.setter
     def comments(self, value: (tuple, list, set)):
+        if isinstance(value, dict):
+            value = Loadable.dict_to_list(value)
+
         self._comments = list(value) if not isinstance(value, str) else [value]
 
     @property
@@ -230,5 +253,16 @@ class Sample(Loadable):
         # return only values, not time-stamps
         return [value for time, value in chunk_data]
 
-    def dump(self):
-        pass
+    def dump_data(self, filename=None, mode='w'):
+        if filename is None:
+            filename = self.filename
+
+        if isinstance(filename, str) and len(self.setup.devices) > 1:
+            with h5py.File(filename, mode) as h5:
+                g = h5.create_group('data')
+                for data, device in zip(self.data, self.setup.devices):
+                    d = g.create_dataset(device.name, data=data.T)
+
+        else:
+            for fname, data, device in zip(filename, self.data, self.setup.devices):
+                device.dump_data(fname, mode=mode)

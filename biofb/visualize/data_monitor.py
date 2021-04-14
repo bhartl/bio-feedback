@@ -118,6 +118,8 @@ class DataMonitor(object):
 
         try:
             self.ax_kwargs = dict(ax_kwargs)
+        except TypeError:
+            self.ax_kwargs = ax_kwargs
         except ValueError:
             self.ax_kwargs = ax_kwargs
 
@@ -222,10 +224,9 @@ class DataMonitor(object):
             return
 
         if self.clear_axes:
-            if hasattr(self.ax, '__iter__'):
-                [ax.cla() for ax in self.ax]  # clear axes
-            else:
-                self.ax.cla()
+            for ax_rows in (self.ax if hasattr(self.ax, '__iter__') else [self.ax]):
+                for ax_cols in (ax_rows if hasattr(ax_rows, '__iter__') else [ax_rows]):
+                    ax_cols.cla()
 
         self.ax_plot(ax=self.ax, data=data, channels=self.channels)
         self.apply_plt_kwargs()
@@ -246,9 +247,15 @@ class DataMonitor(object):
         axes = [self.ax] if not hasattr(self.ax, '__iter__') else self.ax
         plt_kwargs = [self.ax_kwargs]*len(axes) if isinstance(self.ax_kwargs, dict) else self.ax_kwargs
 
-        for ax, ax_kwargs in zip(axes, plt_kwargs):
-            for attribute, (args, kwargs) in ax_kwargs.items():
-                try:
-                    getattr(ax, attribute)(*args, **kwargs)
-                except AttributeError:
-                    getattr(plt, attribute)(*args, **kwargs)
+        for ax_row, row_kwargs in zip(axes, plt_kwargs):
+
+            ax_row = [ax_row] if not hasattr(ax_row, '__iter__') else ax_row
+            row_kwargs = [row_kwargs] * len(ax_row) if isinstance(row_kwargs, dict) else row_kwargs
+
+            for ax, ax_kwargs in zip(ax_row, row_kwargs):
+                for attribute, (args, kwargs) in ax_kwargs.items():
+                    try:
+                        getattr(ax, attribute)(*args, **kwargs)
+
+                    except AttributeError:
+                        getattr(plt, attribute)(*args, **kwargs)

@@ -1,10 +1,11 @@
 from biofb.io import Loadable
 from biofb.session import Sample
 from biofb.controller import Agent
-from numpy import ndarray
+from numpy import ndarray, asarray
 import threading
 from abc import ABCMeta, abstractmethod
 from time import sleep
+import os
 
 
 class Session(Loadable, metaclass=ABCMeta):
@@ -163,13 +164,14 @@ class Session(Loadable, metaclass=ABCMeta):
         done = False
 
         while not done:
-            action = self.agent.action(state)           # get action from agent instance
+            action = self.agent.get_action(state)       # get action from agent instance and track action data
             done, state, info_dict = self.step(action)  # update sample state based on agent action
-            if self.delay != 0.:
-                sleep(self.delay)
 
             if data_monitor is not None:
                 data_monitor.data = [d.T for d in self.sample.data]
+
+            if self.delay != 0.:
+                sleep(self.delay)
 
         self.done = done
         return
@@ -206,3 +208,23 @@ class Session(Loadable, metaclass=ABCMeta):
             pass
 
         return
+
+    def dump(self, filename=None, file_format=None, exist_ok=True):
+        if filename is None:
+            filename = self.sample.filename
+            base, extension = os.path.splitext(filename)
+            if extension.lower() not in ('.h5', '.hdf5', '.h5py'):
+                filename = base + '.yml'
+
+        if file_format is None:
+            __, extension = os.path.splitext(filename)
+            if extension.lower() in ('.h5', '.hdf5', '.h5py'):
+                file_format = 'h5'
+            elif extension.lower() in ('.json'):
+                file_format = 'json'
+            else:
+                file_format = 'yml'
+
+        super().dump(filename=filename, file_format=file_format, exist_ok=exist_ok)
+        self.sample.dump_data(mode='a')
+        self.agent.dump_actions(filename=self.sample.filename, mode='a')

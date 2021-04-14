@@ -164,7 +164,7 @@ def bioplux_with_secured(datafile=TEST_FILE_BIOPLUX, **config):
     print('Done.')
 
 
-def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
+def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True, repeat=False):
     f"""
     :param sample_loadable: Sample object or (path-to) dict-like object which can be loaded as Sample object, 
     defaults to {TEST_FILE_SAMPLE}
@@ -174,87 +174,93 @@ def send_sample(sample_loadable: (str, Sample) = TEST_FILE_SAMPLE, offset=True):
                    or (ii) integer list, defining the offset for each data-array.
     """
 
-    # Initialize Sample
-    sample = Sample.load(sample_loadable)
-    sample.load_data()
+    while True:
 
-    # Generate LSLTransmitter for every device in the Sample
-    transmitter = []
-    try:
-        for i, device in enumerate(sample.setup.devices):
-            # Device specific transmitter
-            t = LSLTransmitter(device=device,
-                               stream=f'{device.__class__.__name__}',
-                               stream_type='name',
-                               augment_sampling_rate=True,
-                               terminate_when_empty=True,
-                               verbose=(i == 0),  # only show status messages for one transmitter for simplicity
-                               )
+        # Initialize Sample
+        sample = Sample.load(sample_loadable)
+        sample.load_data()
 
-            print('---')
-            print(f'streaming virtual data from file `{sample.filename[i]}` '
-                  f'to LSL on stream `{t.stream}`'
-                  f'at a sampling rate of `{t.device["nominal_srate"]}`.')
+        # Generate LSLTransmitter for every device in the Sample
+        transmitter = []
+        try:
+            for i, device in enumerate(sample.setup.devices):
+                # Device specific transmitter
+                stream_name = "OpenSignals" if device.__class__.__name__ == "Bioplux" else device.__class__.__name__
+                t = LSLTransmitter(device=device,
+                                   stream=f'{stream_name}',
+                                   stream_type='name',
+                                   augment_sampling_rate=True,
+                                   terminate_when_empty=True,
+                                   verbose=(i == 0),  # only show status messages for one transmitter for simplicity
+                                   )
 
-            print()
-            print(f'device {device} info:')
-            for k, v in t.device.items():
-                print(f'- {k}: {v}')
+                print('---')
+                print(f'streaming virtual data from file `{sample.filename[i]}` '
+                      f'to LSL on stream `{t.stream}`'
+                      f'at a sampling rate of `{t.device["nominal_srate"]}`.')
 
-            print()
-            print('channel info:')
-            for c, dc in zip(t.channels, device.channels):
-                print(f'- device channel {dc} -> stream channel {c}')
+                print()
+                print(f'device {device} info:')
+                for k, v in t.device.items():
+                    print(f'- {k}: {v}')
 
-            transmitter.append(t)
+                print()
+                print('channel info:')
+                for c, dc in zip(t.channels, device.channels):
+                    print(f'- device channel {dc} -> stream channel {c}')
 
-        # print verbosity information (we only allow one stream to be verbose)
-        verbose_transmitter = [t for t in transmitter if t.verbose]
-        verbose_slice = 0 if len(verbose_transmitter) == 1 else slice(None, None, None)
-        print(f'\nTransmitter{"s" * (len(verbose_transmitter) > 1)}',
-              f'{[str(t) for t in verbose_transmitter][verbose_slice]}',
-              f'print{"s" * (len(verbose_transmitter) == 1)} status messages')
+                transmitter.append(t)
 
-        # offset of different channel
-        if offset:
-            if isinstance(offset, bool):
-                # cut off initial mismatch to shortest data-sample
+            # print verbosity information (we only allow one stream to be verbose)
+            verbose_transmitter = [t for t in transmitter if t.verbose]
+            verbose_slice = 0 if len(verbose_transmitter) == 1 else slice(None, None, None)
+            print(f'\nTransmitter{"s" * (len(verbose_transmitter) > 1)}',
+                  f'{[str(t) for t in verbose_transmitter][verbose_slice]}',
+                  f'print{"s" * (len(verbose_transmitter) == 1)} status messages')
 
-                # get time of samples (ndata/sampling_rate)
-                n_data = [len(d.data)/d.sampling_rate
-                          for d in sample.setup.devices]
+            # offset of different channel
+            if offset:
+                if isinstance(offset, bool):
+                    # cut off initial mismatch to shortest data-sample
 
-                # remove "overtime" of other samples"
-                offset = [(nd - min(n_data))*d.sampling_rate
-                          for d, nd in zip(sample.setup.devices, n_data)]
+                    # get time of samples (ndata/sampling_rate)
+                    n_data = [len(d.data)/d.sampling_rate
+                              for d in sample.setup.devices]
 
-                # adjust as good as possible given the different sampling rates
-                offset = [int(o + (d.sampling_rate - o % d.sampling_rate)) if o != 0 else 0
-                          for o, d in zip(offset, sample.setup.devices)]
+                    # remove "overtime" of other samples"
+                    offset = [(nd - min(n_data))*d.sampling_rate
+                              for d, nd in zip(sample.setup.devices, n_data)]
 
-            print(f'\nUsing data-offset {offset} for the respective devices (resulting in a total of',
-                  f'{[(len(d.data) - o)/d.sampling_rate for o, d in zip(offset, sample.setup.devices)]} secs',
-                  f'of time-series data)\n')
+                    # adjust as good as possible given the different sampling rates
+                    offset = [int(o + (d.sampling_rate - o % d.sampling_rate)) if o != 0 else 0
+                              for o, d in zip(offset, sample.setup.devices)]
 
-        else:
-            offset = [0]*sample.setup.n_devices
+                print(f'\nUsing data-offset {offset} for the respective devices (resulting in a total of',
+                      f'{[(len(d.data) - o)/d.sampling_rate for o, d in zip(offset, sample.setup.devices)]} secs',
+                      f'of time-series data)\n')
 
-        assert len(offset) == sample.setup.n_devices
+            else:
+                offset = [0]*sample.setup.n_devices
 
-        # push device data to the queue, could also be done in chunks
-        for t, d, o in zip(transmitter, sample.setup.devices, offset):
-            t.push_data(d.data[o:])
+            assert len(offset) == sample.setup.n_devices
 
-        # start transmitter to transmit data received from the queue in a pus_data event
-        for t in transmitter:
-            t.start()
+            # push device data to the queue, could also be done in chunks
+            for t, d, o in zip(transmitter, sample.setup.devices, offset):
+                t.push_data(d.data[o:])
 
-        for t in transmitter:
-            t.join()
+            # start transmitter to transmit data received from the queue in a pus_data event
+            for t in transmitter:
+                t.start()
 
-    finally:
-        for t in transmitter:
-            t.stop()
+            for t in transmitter:
+                t.join()
+
+        finally:
+            for t in transmitter:
+                t.stop()
+
+        if not repeat:
+            break
 
     print('Done with data-transmission')
 

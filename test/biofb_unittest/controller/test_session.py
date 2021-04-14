@@ -26,6 +26,9 @@ class TestSession(unittest.TestCase):
                 dummy_state_dependent_sign = np.sign(np.random.rand() - 0.5/(state*0.1 + 1))
                 return self.inc * dummy_state_dependent_sign
 
+            def get_action(self, state):
+                return self.action(state)
+
         # overwrite abstract method `step`
         class TSession(Session):
             """ Test Session whose step is to increase the state of its Test Sample using the Test Agent """

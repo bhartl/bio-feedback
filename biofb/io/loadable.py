@@ -3,6 +3,8 @@ import json
 import os.path
 import csv
 import inspect
+import h5py
+import numpy as np
 
 
 class Loadable(object):
@@ -28,8 +30,17 @@ class Loadable(object):
         dict_repr = {}
         for p in parameters:
             try:
-                dict_repr[p] = getattr(self, p)
-            except AssertionError:
+                v = getattr(self, p, getattr(self, '_'+p))
+                if isinstance(v, Loadable):
+                    v = v.to_dict()
+                elif isinstance(v, list):
+                    v = [
+                        vi.to_dict() if isinstance(vi, Loadable) else vi
+                        for vi in v
+                    ]
+
+                dict_repr[p] = v
+            except AttributeError as ex:
                 pass
 
         return dict_repr
@@ -55,6 +66,7 @@ class Loadable(object):
                 else:
                     # if tuple is provided, use as arguments
                     value = cls.load_dict_like(*value)
+                    return cls.load(value)
             except AssertionError:
 
                 # check, whether representation of dict or tuple has been passed via value
@@ -66,6 +78,65 @@ class Loadable(object):
                 return cls.load(value)
 
         return cls(**value)
+
+    def dump(self, filename, file_format='yml', exist_ok=True):
+        print(f'Export {self.__class__.__name__}-instance to file `{filename}`')
+
+        sample_repr = self.to_dict()
+
+        if not exist_ok:
+            assert not os.path.isfile(filename), f"Specified file `{filename}` exists."
+
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        if file_format.lower() in ('yml', 'yaml'):
+            with open(filename, 'w') as outfile:
+                yaml.safe_dump(sample_repr, outfile)
+        elif file_format.lower() in ('json',):
+            with open(filename, 'w') as outfile:
+                json.dump(sample_repr, outfile)
+        elif file_format.lower() in ('hdf5', 'h5', 'h5py'):
+            with h5py.File(filename, 'w') as h5:
+                sample_repr = {self.__class__.__name__: sample_repr}
+                Loadable.recursively_save_dict_contents_to_group(h5, '/', sample_repr)
+        else:
+            raise NotImplementedError(f'file_format {file_format}')
+
+    @staticmethod
+    def recursively_save_dict_contents_to_group(h5, path, dict_repr):
+        """
+        ....
+        """
+        for k, v in dict_repr.items():
+            path_k = path + k
+            if isinstance(v, (list, tuple)):
+                v = Loadable.list_to_dict(v)
+
+            if isinstance(v, (np.ndarray, np.int64, np.float64, str, bytes, int, float)) or v is None:
+
+                if v is None:
+                    v = np.nan
+
+                try:
+                    h5[path_k] = v
+                except OSError:
+                    if path_k[-1] == ".":
+                        path_k = path_k[:-1] + "'.'"
+                        h5[path_k] = v
+
+            elif isinstance(v, dict):
+                Loadable.recursively_save_dict_contents_to_group(h5, path_k + '/', v)
+            else:
+                raise ValueError(f'Don\'t understand type {type(v)}.')
+
+    @staticmethod
+    def list_to_dict(list_instance):
+        return {str(i): vi for i, vi in enumerate(list_instance)}
+
+    @staticmethod
+    def dict_to_list(dict_instance):
+        integer_keyed = {int(k): v for k, v in dict_instance.items()}
+        return list(integer_keyed)
 
     @classmethod
     def load_dict_like(cls, value: (str, dict), index=None) -> dict:
@@ -96,12 +167,16 @@ class Loadable(object):
                         assert isinstance(loaded, dict) or isinstance(loaded, list)
 
                     except:
-                        with open(value, 'r') as s:
-                            data = [line for line in csv.DictReader(s)]
-                            if index is not None:
-                                loaded = data[index]
-                            else:
-                                loaded = Loadable.list_of_dicts_to_dict_of_lists(data)
+                        try:
+                            with open(value, 'r') as s:
+                                data = [line for line in csv.DictReader(s)]
+                                if index is not None:
+                                    loaded = data[index]
+                                else:
+                                    loaded = Loadable.list_of_dicts_to_dict_of_lists(data)
+                        except:
+                            with h5py.File(value, 'r') as h5:
+                                loaded = Loadable.recursively_load_dict_contents_from_group(h5, '/')
             else:
                 try:
                     loaded = json.loads(value)
@@ -122,6 +197,27 @@ class Loadable(object):
                                          f"of type `{type(value)}`."
 
         return loaded
+
+    @staticmethod
+    def recursively_load_dict_contents_from_group(h5, path):
+        """
+        ....
+        """
+        ans = {}
+        for key, item in h5[path].items():
+            if isinstance(item, h5py._hl.dataset.Dataset):
+                ans[key] = item.value
+            elif isinstance(item, h5py._hl.group.Group):
+                ans[key] = Loadable.recursively_load_dict_contents_from_group(h5, path + key + '/')
+        return ans
+
+    @classmethod
+    def load_dict_from_hdf5(cls, filename):
+        """
+        ....
+        """
+        with h5py.File(filename, 'r') as h5:
+            return cls(Loadable.recursively_load_dict_contents_from_group(h5, '/'))
 
     @staticmethod
     def list_of_dicts_to_dict_of_lists(data: list):

@@ -1,3 +1,5 @@
+import numpy as np
+
 from biofb.io import Loadable
 from biofb.hardware import Channel
 from numpy import loadtxt, ndarray, asarray, concatenate
@@ -98,6 +100,10 @@ class Device(Loadable):
 
     @channels.setter
     def channels(self, value):
+
+        if isinstance(value, dict):
+            value = Loadable.dict_to_list(value)
+
         self._channels = [
             v if isinstance(v, Channel) else Channel.load(v)
             for v in value
@@ -480,3 +486,12 @@ class Device(Loadable):
 
         return cls.SENSOR_TO_CHANNEL_TYPE[sensor_name]
 
+    def dump_data(self, filename, mode='w'):
+        np.savetxt(filename, self.data)
+
+    def to_dict(self):
+        dict_repr = super().to_dict()
+        if self.__class__ is not Device:
+            dict_repr['class'] = self.__class__.__name__
+
+        return dict_repr

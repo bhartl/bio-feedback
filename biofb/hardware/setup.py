@@ -130,6 +130,10 @@ class Setup(Loadable):
     @devices.setter
     def devices(self, value):
         self._devices = []
+
+        if isinstance(value, dict):
+            value = Loadable.dict_to_list(value)
+
         for v in value:
             d = Device.load(v)
             d._setup = self

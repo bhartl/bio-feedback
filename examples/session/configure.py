@@ -1,18 +1,16 @@
 from biofb.hardware import Setup
 from biofb.session import Subject, Location, Setting, Sample, Controller
-from biofb.controller.audio import AudioKeySession
-from biofb.controller import Agent, KeyAgent
-from biofb.visualize import DataMonitor
 from biofb.pipeline import LSLReceiver
 import os
 import pandas as pd
 import time
 
-
 KNOWN_CONTROLLERS = "data/session/db_meta_data/controller.csv"
 KNOWN_SUBJECTS = "data/session/db_meta_data/subject.csv"
 KNOWN_LOCATIONS = "data/session/db_meta_data/location.csv"
-KNOWN_SETTINGS = "data/session/db_meta_data/settings.csv"
+KNOWN_SETTINGS = "data/session/db_meta_data/setting.csv"
+
+DEFAULT_STREAMS = ('OpenSignals', 'Unicorn')
 
 
 def new_loadable(loadable, path, loaded):
@@ -155,7 +153,7 @@ def new_setting(path, loaded,
     return setting, setting_id
 
 
-def select_setting(known_settings="data/session/db_meta_data/setting.csv",
+def select_setting(known_settings=KNOWN_SETTINGS,
                    known_controllers=KNOWN_CONTROLLERS,
                    known_locations=KNOWN_LOCATIONS,
                    ):
@@ -192,7 +190,7 @@ def select_setting(known_settings="data/session/db_meta_data/setting.csv",
     return setting, chosen_id
 
 
-def connect_to_devices(streams=('Bioplux', 'Unicorn'), chunk_size=1./5., verbose=True, ):
+def connect_to_devices(streams=DEFAULT_STREAMS, chunk_size=1./5., verbose=True, ):
 
     print('DATA STREAM CONNECTION MENU')
 
@@ -211,7 +209,7 @@ def connect_to_devices(streams=('Bioplux', 'Unicorn'), chunk_size=1./5., verbose
 
     # try to load hardware setup based on lab-streaming-layer meta-information
     stream_kwargs = dict(chunk_size=chunk_size,
-                         pull_chunks=True,
+                         pull_chunks=False,
                          verbose=verbose,
                          )
 
@@ -251,136 +249,3 @@ def comment_sample(sample):
 
     sample.comments = comments
     return comments
-
-
-def monitor_session(session,
-                    chunk_size=1./5., delta_time=5., total_time=10., lw=2., ylim=4.,
-                    ):
-
-    from examples.pipeline.biofb_lsl_acquisition import make_figure, ax_plot, ax_legend
-
-    hws = session.sample.setup
-    data_slices = [int(delta_time * device.sampling_rate) for device in hws]
-
-    plot_channels = [
-        [dict(label=c.name, lw=lw, dt_slice=ds) for c in d.channels]
-        for d, ds in zip(hws.devices, data_slices)
-    ]
-
-    plt_kwargs = [
-        {'set_xlim': ((0, delta_time * device.sampling_rate), {}),
-         'set_ylim': ((-abs(ylim), abs(ylim)), {}),
-         'set_xlabel': (('steps' if (i == (hws.n_devices - 1)) else None, ), {}),
-         'set_ylabel': ((device.name,), {})}
-        for i, device in enumerate(hws.devices)
-    ]
-
-    with DataMonitor(channels=plot_channels,
-                     ax_kwargs=plt_kwargs,
-                     make_fig=make_figure,
-                     ax_plot=ax_plot,
-                     make_fig_kwargs=dict(figsize=(15, 10), n_devices=hws.n_devices),
-                     legend=ax_legend,
-                     style=None,
-                     ) as dm:
-
-        session.run(data_monitor=dm)
-
-def perform_session(sample_path_pattern, setting, setup, subject):
-
-    sample = new_sample(sample_path_pattern=sample_path_pattern,
-                        setting=setting,
-                        setup=setup,
-                        subject=subject)
-
-    controller = setting.controller
-
-    if not isinstance(controller, Agent):
-        agent = KeyAgent(
-            name='session_agent',
-            description='tracks start and stop of a session',
-            keymap_action={'s': "print('start')", 'e': "print('event')"},
-            verbose=False,
-        )
-    else:
-        agent = controller
-
-    session = AudioKeySession(sample=sample,
-                              agent=agent,
-                              name='biofb session',
-                              description='',
-                              )
-
-    monitor_session(session=session)
-
-    try:
-        sample.setup.stop()
-    except:
-        pass
-
-    return sample
-
-
-def main(sample_path_pattern='data/session/sample/biofb-<TIMESTAMP>.hdf5',
-         streams=('Bioplux', 'Unicorn'),
-         chunk_size=1.,
-         verbose=True
-         ):
-
-    print('BIOFB SESSION RECORDER ... (c) by Brain Project')
-    print()
-
-    print('---')
-    print('1.) Specify the session setting')
-    print('2.) Specify the session participant')
-    print('3.) Specify the hardware setup data streams')
-    print('4.) Start the session')
-    print('5.) Perform your experiments')
-    print('6.) End the session, add sample comments and store the acquired data')
-    print('---')
-    print()
-
-    print('---')
-    setting, setting_id = select_setting()
-    print('chosen setting: ', setting)
-    print('---')
-    print()
-
-    print('---')
-    subject, subject_id = select_subject()
-    print('chosen participant: ', subject)
-    print('---')
-    print()
-
-    print('---')
-    export_path = input(f'chosen Sample export-pattern ({sample_path_pattern}): ').strip()
-    if export_path == "":
-        export_path = sample_path_pattern
-    sample_path_pattern = export_path
-    print('---')
-    print()
-
-    print('---')
-    hardware_setup = connect_to_devices(streams=streams, chunk_size=chunk_size, verbose=verbose)
-    print('---')
-    print()
-
-    print('---')
-    sample = perform_session(sample_path_pattern=sample_path_pattern,
-                             setting=setting,
-                             subject=subject,
-                             setup=hardware_setup)
-    print('---')
-    print()
-
-    print('---')
-    comment_sample(sample)
-    print('---')
-    print()
-
-    sample.dump()
-
-
-if __name__ == '__main__':
-    import argh
-    argh.dispatch_command(main)

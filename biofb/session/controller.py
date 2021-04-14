@@ -47,6 +47,8 @@ class Controller(Loadable):
             assert isinstance(value, dict)
             specific_cls = value.pop('class')
             specific_kwargs = value.pop('kwargs', {})
+            if isinstance(specific_kwargs, str):
+                specific_kwargs = eval(specific_kwargs)
 
             if isinstance(specific_cls, str):
                 specific_cls = locate(specific_cls)
@@ -56,3 +58,10 @@ class Controller(Loadable):
         except (AssertionError, KeyError, AttributeError):
 
             return super().load(value)
+
+    def to_dict(self):
+        dict_repr = super().to_dict()
+        if self.__class__ is not Controller:
+            dict_repr['class'] = self.__class__.__name__
+
+        return dict_repr

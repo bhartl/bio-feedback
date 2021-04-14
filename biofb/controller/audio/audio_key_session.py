@@ -155,6 +155,10 @@ class AudioKeySession(KeySession):
                 self._replay = sa.play_buffer(audio, min([shape(audio)[0], 1]), 2, **self._replay_kwargs)
 
         except Exception as ex:
-            raise ex
+
+            if hasattr(action_map, '__call__'):
+                action_map()
+            elif isinstance(action_map, str):
+                eval(action_map)
 
         return self._replay

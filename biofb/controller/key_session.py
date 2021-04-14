@@ -117,7 +117,5 @@ class KeySession(Session):
                 return eval(to_apply)
 
         except Exception as ex:
+            print(ex)
             raise ex
-
-    def dump(self):
-        pass
