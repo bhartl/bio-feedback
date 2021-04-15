@@ -197,6 +197,13 @@ class Session(Loadable, metaclass=ABCMeta):
 
         :todo: Test
         """
+
+        try:
+            # stop data acquisition
+            self.sample.setup.stop()
+        except:
+            pass
+
         if not self.running:
             return
 

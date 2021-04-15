@@ -25,3 +25,4 @@ pysoundfile
 # experimental setup
 pylsl~=1.14.0
 pyxdf~=1.16.3
+h5py

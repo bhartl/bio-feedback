@@ -104,6 +104,13 @@ class AudioKeySession(KeySession):
 
         return done, state, info
 
+    def stop(self):
+        try:
+            if self.replaying:
+                self._replay.stop()
+        finally:
+            super().stop()
+
     def apply(self, action) -> (sa.PlayObject, None):
         """ Replay controller data or controller file
 

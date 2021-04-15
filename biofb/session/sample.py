@@ -34,6 +34,8 @@ class Sample(Loadable):
 
         Loadable.__init__(self)
 
+        self._data = None
+
         self._setup = None
         self.setup = setup
 
@@ -52,8 +54,6 @@ class Sample(Loadable):
         self._filename = None
         self.filename = filename
 
-        self._data = None
-
     @property
     def filename(self) -> str:
         return self._filename
@@ -70,13 +70,23 @@ class Sample(Loadable):
         if isinstance(value, dict):
             value = Loadable.dict_to_list(value)
 
-        # try to check wildcards of the form `<PROPERTY_OF_SAMPLE>`
-        # such as `timestamp` or `acquisition_datetime` (capitalized)
-        # and modify value with corresponding property values
-        for p in [p for p in dir(self.__class__) if isinstance(getattr(self.__class__, p), property)]:
-            wildcard = f'<{p.upper()}>'
-            if wildcard in value:
-                value = value.replace(wildcard, str(getattr(self, p)))
+        reevalued = []
+        is_str = isinstance(value, str)
+
+        for v in value if (hasattr(value, '__iter__') and not is_str) else [value]:
+
+            # try to check wildcards of the form `<PROPERTY_OF_SAMPLE>`
+            # such as `timestamp` or `acquisition_datetime` (capitalized)
+            # and modify value with corresponding property values
+            for p in [p for p in dir(self.__class__) if isinstance(getattr(self.__class__, p), property)]:
+                wildcard = f'<{p.upper()}>'
+                if wildcard in v:
+                    v = v.replace(wildcard, str(getattr(self, p)))
+                    v = v.replace(' ', '_').replace(':', '-')
+
+            reevalued.append(v)
+
+        value = reevalued if not is_str else reevalued[0]
 
         self._filename = value
 
@@ -261,7 +271,8 @@ class Sample(Loadable):
             with h5py.File(filename, mode) as h5:
                 g = h5.create_group('data')
                 for data, device in zip(self.data, self.setup.devices):
-                    d = g.create_dataset(device.name, data=data.T)
+                    dump_data = data if data.shape[0] > data.shape[1] else data.T
+                    d = g.create_dataset(device.name, data=dump_data)
 
         else:
             for fname, data, device in zip(filename, self.data, self.setup.devices):

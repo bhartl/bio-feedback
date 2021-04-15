@@ -72,7 +72,11 @@ class Loadable(object):
                 # check, whether representation of dict or tuple has been passed via value
                 v = value
                 if isinstance(value, str):
-                    value = eval(value)
+                    try:
+                        value = eval(value)
+                    except:
+                        pass
+
                     assert not isinstance(value, str), f"Did not understand value `{v}` to load {cls} instance."
 
                 return cls.load(value)
@@ -83,6 +87,8 @@ class Loadable(object):
         print(f'Export {self.__class__.__name__}-instance to file `{filename}`')
 
         sample_repr = self.to_dict()
+
+        filename = os.path.abspath(filename)
 
         if not exist_ok:
             assert not os.path.isfile(filename), f"Specified file `{filename}` exists."
@@ -119,7 +125,7 @@ class Loadable(object):
 
                 try:
                     h5[path_k] = v
-                except OSError:
+                except (OSError, RuntimeError):
                     if path_k[-1] == ".":
                         path_k = path_k[:-1] + "'.'"
                         h5[path_k] = v

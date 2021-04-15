@@ -28,7 +28,7 @@ python examples/session/record.py
 
 and follow the instructions (type `python examples/session/record.py -h` for help).
 
-You can always **stop** the measurement by pressing `Ctrl-C` or `ESC` (please close the monitor window before pressing `ESC`).
+You can always **stop** the measurement by pressing `Ctrl-C` or `ESC` (please press `ESC` before closing the monitor).
 
 The session recorder allows **choosing** from pre-set (or generating new) 
 - *Settings* (a setting describes the environmental setup of a session. It specifies the *Controller*, the *Location* and potentially more important details)
@@ -44,7 +44,13 @@ After the measurement a compressed **hdf5 output-file** (per default in the [`da
 ### Third-Party Data Acquisition
 1) Start *OpenSignals (r)evolution*
    - connect (and configure) the *biosignalsplux* hardware.
+   - The routing of our first biosignalsplux measurements was as follows:
+     ![Sketch of bio-sensory hardware devices](../../doc/biofb/fig/biopux_routing.png "Used bio-sensory devices")
+
+     
 2) Start the *g.tech* Unicorn Suit
+   - connect the electrodes of the *Unicorn* EEG device to the *Unicorn* cap
+     ![Sketch of bio-sensory hardware devices](../../doc/biofb/fig/unicorn_EEG_routing.svg "Used bio-sensory devices")
    - connect the *Unicorn* hardware
    - start the recorder (License required)
    - setup the EEG-cap (all signals must be green)

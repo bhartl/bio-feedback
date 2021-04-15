@@ -169,14 +169,14 @@ class Receiver(Loadable, metaclass=ABCMeta):
 
         self._queue = Queue()
         self._puller = Process(name='pull data',
-                               target=type(self).__start_receiving_data,
+                               target=type(self).start_receiving_data,
                                args=(self._queue, ),
                                kwargs=self.to_dict())
         self._puller.start()
         return self
 
     @classmethod
-    def __start_receiving_data(cls, queue: Queue, **kwargs):
+    def start_receiving_data(cls, queue: Queue, **kwargs):
         """ Class-method which creates, connects and starts a `Receiver`
         of type `cls` based on the `kwargs` specification.
 

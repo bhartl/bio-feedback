@@ -273,7 +273,7 @@ class Setup(Loadable):
                                                                                 "Receiver` specified."
 
         else:
-            assert all(device.receiver is None for device in self.devices), "Only one receiver perdevice can be " \
+            assert all(device.receiver is None for device in self.devices), "Only one receiver per device can be " \
                                                                             "specified, close connections fist."
             for i, device in enumerate(self.devices):
                 receiver = receivers[i]

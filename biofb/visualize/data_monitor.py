@@ -4,6 +4,7 @@ from multiprocessing import Process, Queue, TimeoutError
 from multiprocessing.connection import Connection
 from numpy import ndim, ndarray
 from queue import Empty
+from time import sleep
 
 
 def default_fig(**kwargs):
@@ -204,8 +205,9 @@ class DataMonitor(object):
             else:
                 data = self._data_queue.get(timeout=self.update_rate)
 
-        except (TimeoutError, Empty):
+        except:
             data = None
+            sleep(1e-4)
 
         return data
 
@@ -214,7 +216,10 @@ class DataMonitor(object):
         """ Puts data to the multiprocessing data queue
             which is then received by the function animation.
         """
-        self._data_queue.put(value)
+        try:
+            self._data_queue.put(value)
+        except:
+            pass
 
     def animate(self, i):
         """ The update method of the matplotlib function animation """

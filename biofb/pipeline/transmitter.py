@@ -8,6 +8,92 @@ from numpy import ndim, shape, concatenate
 from biofb.pipeline import STREAM_TYPES
 
 
+
+def defaultdict_empty_str(*args, **kwargs):
+    return ''
+
+
+def channels_to_list_of_dicts(channels: list) -> [defaultdict]:
+    """ Serialize bio-feedback Channel instances for the specific transmitter
+
+    :param: list of bio-feedback Channel instances (or dict representations thereof)
+
+    :return: list of transmitter-specific (default)dict representations of the specified channels,
+             each providing 'label' (name), 'type' (label) and 'unit' (unit) information.
+    """
+
+    from biofb.hardware import Channel
+
+    list_of_channel_dicts = []
+    for i, c in enumerate(channels):
+        channel_dict = defaultdict(defaultdict_empty_str)
+
+        try:
+            name = c.name if isinstance(c, Channel) else c.get('name', f'CH{i}')
+            channel_dict['label'] = name
+        except (TypeError, AttributeError) as ex:
+            channel_dict['label'] = f'CH{i}'
+
+        try:
+            label = c.label if isinstance(c, Channel) else c['label']
+            channel_dict['type'] = label
+        except (TypeError, AttributeError):
+            pass
+
+        try:
+            unit = c.unit if isinstance(c, Channel) else c['unit']
+            channel_dict['unit'] = unit
+        except (TypeError, AttributeError):
+            pass
+
+        try:
+            channel_type = c.__class__.__name__ if isinstance(c, Channel) else c['type']
+            channel_dict['type'] = channel_type
+        except (TypeError, AttributeError):
+            pass
+
+        list_of_channel_dicts.append(channel_dict)
+
+    return list_of_channel_dicts
+
+
+def device_to_dict(device: Loadable, stream: str, channel_format: str = 'float32') -> defaultdict:
+    """ Serialize biofb.hardware.Device or biofb.controller.Agent (to be implemented) instances
+        for the specific transmitter
+
+    :return: list of biofb.hardware.channel instances that are to be
+             serialized for the specific transmitter
+    """
+
+    from biofb.hardware import Device
+    from biofb.controller import Agent
+
+    device_dict = defaultdict()
+
+    if isinstance(device, Device):
+        device_dict['name'] = stream
+        device_dict['type'] = device.__class__.__name__
+        device_dict['channel_count'] = device.n_channels
+        device_dict['nominal_srate'] = device.sampling_rate
+        device_dict['channel_format'] = channel_format
+        device_dict['source_id'] = device.name
+
+    elif isinstance(device, Agent):
+        raise NotImplementedError('Agent device')
+
+    else:
+        assert isinstance(device, dict) or isinstance(device, defaultdict)
+
+        device_dict['name'] = device['name']
+        device_dict['type'] = device['type']
+        device_dict['channel_count'] = device['channel_count']
+        device_dict['nominal_srate'] = device['nominal_srate']
+        device_dict['channel_format'] = device['channel_format']
+        device_dict['source_id'] = device['source_id']
+
+    return device_dict
+
+
 class Transmitter(Loadable, metaclass=ABCMeta):
     """ Abstract Device-Transmitter class for data-acquisition
 
@@ -89,7 +175,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
             try:
                 self._pusher.terminate()
                 self._pusher = None
-            except AssertionError:
+            except (AssertionError, AttributeError):
                 pass
 
         if self._queue is not None:
@@ -176,95 +262,14 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         from biofb.controller import Agent
 
         if isinstance(value, Device):
-            self.channels = self.channels_to_list_of_dicts(value.channels)
+            self.channels = channels_to_list_of_dicts(value.channels)
         elif isinstance(value, Agent):
             raise NotImplementedError("transmit controller actions or session output.")
 
         kwargs = {
             'channel_format': self._kwargs.get('channel_format', 'float32'),
         }
-        self._device = self.device_to_dict(value, stream=self.stream, **kwargs)
-
-    @staticmethod
-    def channels_to_list_of_dicts(channels: list) -> [defaultdict]:
-        """ Serialize bio-feedback Channel instances for the specific transmitter
-
-        :param: list of bio-feedback Channel instances (or dict representations thereof)
-
-        :return: list of transmitter-specific (default)dict representations of the specified channels,
-                 each providing 'label' (name), 'type' (label) and 'unit' (unit) information.
-        """
-
-        from biofb.hardware import Channel
-
-        list_of_channel_dicts = []
-        for i, c in enumerate(channels):
-            channel_dict = defaultdict(lambda *args, **kwargs: '')
-
-            try:
-                name = c.name if isinstance(c, Channel) else c.get('name', f'CH{i}')
-                channel_dict['label'] = name
-            except (TypeError, AttributeError) as ex:
-                channel_dict['label'] = f'CH{i}'
-
-            try:
-                label = c.label if isinstance(c, Channel) else c['label']
-                channel_dict['type'] = label
-            except (TypeError, AttributeError):
-                pass
-
-            try:
-                unit = c.unit if isinstance(c, Channel) else c['unit']
-                channel_dict['unit'] = unit
-            except (TypeError, AttributeError):
-                pass
-
-            try:
-                channel_type = c.__class__.__name__ if isinstance(c, Channel) else c['type']
-                channel_dict['type'] = channel_type
-            except (TypeError, AttributeError):
-                pass
-
-            list_of_channel_dicts.append(channel_dict)
-
-        return list_of_channel_dicts
-
-    @staticmethod
-    def device_to_dict(device: Loadable, stream: str, channel_format: str = 'float32') -> defaultdict:
-        """ Serialize biofb.hardware.Device or biofb.controller.Agent (to be implemented) instances
-            for the specific transmitter
-
-        :return: list of biofb.hardware.channel instances that are to be
-                 serialized for the specific transmitter
-        """
-
-        from biofb.hardware import Device
-        from biofb.controller import Agent
-
-        device_dict = defaultdict()
-
-        if isinstance(device, Device):
-            device_dict['name'] = stream
-            device_dict['type'] = device.__class__.__name__
-            device_dict['channel_count'] = device.n_channels
-            device_dict['nominal_srate'] = device.sampling_rate
-            device_dict['channel_format'] = channel_format
-            device_dict['source_id'] = device.name
-
-        elif isinstance(device, Agent):
-            raise NotImplementedError('Agent device')
-
-        else:
-            assert isinstance(device, dict) or isinstance(device, defaultdict)
-
-            device_dict['name'] = device['name']
-            device_dict['type'] = device['type']
-            device_dict['channel_count'] = device['channel_count']
-            device_dict['nominal_srate'] = device['nominal_srate']
-            device_dict['channel_format'] = device['channel_format']
-            device_dict['source_id'] = device['source_id']
-
-        return device_dict
+        self._device = device_to_dict(value, stream=self.stream, **kwargs)
 
     @property
     def stream_type(self) -> str:
@@ -348,7 +353,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         self._queue = Queue()
         self._transmitter_event = Event()
         self._pusher = Process(name='transmitter',
-                               target=type(self).__start_transmitting_data,
+                               target=type(self).start_transmitting_data,
                                args=(self._queue, self._transmitter_event),
                                kwargs=self.to_dict())
         self._pusher.start()
@@ -360,7 +365,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
         return self
 
     @classmethod
-    def __start_transmitting_data(cls, queue: Queue, transmitter_event: Event, **kwargs):
+    def start_transmitting_data(cls, queue: Queue, transmitter_event: Event, **kwargs):
         """ Transmit data that are pushed on the queue in the main process via the push_data method
 
         Data that have been pushed (via push_data(...)) are collected by the transmitter
