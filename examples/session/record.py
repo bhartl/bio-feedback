@@ -42,23 +42,21 @@ def monitor_session(session, delta_time=5., lw=2., ):
 
         plt_kwargs.append(device_kwargs)
 
-    dm = DataMonitor(channels=plot_channels,
+    with DataMonitor(channels=plot_channels,
                      ax_kwargs=plt_kwargs,
                      make_fig=make_figure,
                      ax_plot=ax_plot,
                      make_fig_kwargs=dict(figsize=(15, 10), n_devices=hws.n_devices, n_channels=n_channels),
                      legend=ax_legend,
                      style=None,
-                     )
+                     ) as dm:
 
-    try:
-        dm.start()
-        session.run(data_monitor=dm)
+        try:
+            session.run(data_monitor=dm)
+        finally:
+            session.stop()
+
         print('Session stopped, wait for monitor to close.')
-
-    finally:
-        session.stop()
-        dm.stop()
 
 
 def perform_session(sample_path_pattern, setting, setup, subject, monitor_kwargs=()):

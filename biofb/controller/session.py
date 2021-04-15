@@ -167,8 +167,10 @@ class Session(Loadable, metaclass=ABCMeta):
             action = self.agent.get_action(state)       # get action from agent instance and track action data
             done, state, info_dict = self.step(action)  # update sample state based on agent action
 
-            if data_monitor is not None:
+            try:
                 data_monitor.data = [d.T for d in self.sample.data]
+            except:
+                pass
 
             if self.delay != 0.:
                 sleep(self.delay)
