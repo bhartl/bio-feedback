@@ -39,7 +39,7 @@ Also check-out the [Installationand Setup of the `biofb` Python Package](#instal
 
 *	Build Python Framework (BH, TBD)
 *	Research state of the art EEG/Bio Signals analysis = preprocessing of raw data (DMi, GC)
-*	Find correlations between subjective states and objective sensor values (DMo, GC, TT, BH)
+*	Find correlations between subjective statese and objective sensor values (DMo, GC, TT, BH)
 
  
 
@@ -492,7 +492,7 @@ To configure the *OpenSignals (r)evolution* data-streaming to the LSL we follow 
 
 To stream the *g.tec Unicorn* data to the [Lab Streaming Layer](https://github.com/sccn/labstreaminglayer),
 the **UnicornLSL client**  needs to be installed.
-A pre-built of the **UnicornLSL client** can be found in the [`biofb/pipeline/LSL-Unicorn` folder](biofb/pipeline/LSL-Unicorn); it is supported under Windows 10 ([Win64/UnicornLSL.exe](biofb/pipeline/LSL-Unicorn/Win64/UnicornLSL.exe)), a Linux version is not (yet?) available.
+A Windows 10  of the **UnicornLSL client** can be found in the [`biofb/pipeline/LSL-Unicorn` folder](biofb/pipeline/LSL-Unicorn); it is supported under Windows 10 ([Win64/UnicornLSL.exe](biofb/pipeline/LSL-Unicorn/Win64/UnicornLSL.exe)), a Linux version is not (yet?) available.
 
 The **UnicornLSL client** is a GUI-application which can be connected to the *g.tec Unicorn Black Suit* 
 (by selecting the corresponding device an clicking on `Open`) and which can `Start`/`Stop` a stream

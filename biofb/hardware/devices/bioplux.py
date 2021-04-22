@@ -50,7 +50,7 @@ class Bioplux(Device):
 
     # channel definitions    
     DI = chs.DI(name='DI', label="DI", sampling_rate=500, description="Digital input output.")
-    EOG = chs.EOG(name='EOG', label="CH1", sampling_rate=500, description="Horizontal configuration (black right, red left, ref left).")
+    EOG = chs.EOG(name='EOG', label="CH1", sampling_rate=500, description="Horizontal configuration (black right, red left, ref behind ear).")
     ECG = chs.ECG(name='ECG', label="CH2", sampling_rate=500, description="Lean 1 configuration (ref top, red in, black out).")
     RESP = chs.PZT(name='RESPIRATION', label="CH3", sampling_rate=500, description="Placement between ECG electrodes.")
     EEG = chs.EEG(name='EEG', label="CH4", sampling_rate=500, description="FP1 (red, above left eye), FP2 (black, above right eye), M1 (behind ear above EOG ref).")
