@@ -1,6 +1,7 @@
 import numpy as np
 from biofb.controller import KeyAgent
-from biofb.controller.audio import AudioKeySession as KeySession
+from biofb.controller import AudioKeySession as KeySession
+from biofb.session import Sample
 import os
 from scipy.io import wavfile
 
@@ -21,7 +22,7 @@ FREQUENCIES = {
 DATA_PATH = "data.local/controller/audio/key/"
 
 
-class DummySample(object):
+class DummySample(Sample):
     """ A dummy Sample object required by the KeystrokeSession """
     def __init__(self, *args, **kwargs):
         pass

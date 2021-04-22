@@ -3,10 +3,10 @@
 __all__ = ['signal',
            'visualize',
            'pipeline',
+           'io',
            'hardware',
            'session',
            'controller',
-           'io',
            ]
 
 __author__ = ['Benedikt Hartl']

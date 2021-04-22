@@ -3,6 +3,6 @@
 from .agent import Agent
 from .session import Session
 from .key_agent import KeyAgent
+from .hill_agent import HillAgent
 from .key_session import KeySession
-
-__all__ = ['audio', 'verbal', 'generative']
+from .audio_key_session import AudioKeySession

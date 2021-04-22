@@ -1,17 +1,21 @@
 # Bio-feedback Recorder
 
-The `recorder.py` program allows to perform a `biofb.controller.session`.
+The [`recorder.py` application](recorder.py) allows to perform a [`biofb.controller.Session`](../../biofb/controller/session.py).
 Such sessions might be 
 - basic therapist session, capturing the bio-data from a participant
 - or a key-stroke controlled feedback session (allowing a controller to replay recorded therapist phrases) while monitoring the bio-data
 
-Either way, both the participants bio-data and the controller interactions (if specified) are tracked.
+Either way, both the participants bio-data and the controller interactions (if specified) 
+
+The data are then output to a single compressed *hdf5*-file, which also contains all specified meta-data of the measurement.
+The files are stored per default in [data/session/biofb](../../data/session/biofb) (see also [test/data/session/biofb](../../test/data/session/biofb).
+The stored files can be loaded using the [`biofb.controller.Session`](../../biofb/controller/session.py) class, simply via `Session.load(<PATH_TO_HDF5>)` (open the [recorder_analysis jupyter-notebook](recorder_analysis.ipynb) in the browser for details).
 
 ## Installation
 For installation instructions see the [project's README file](../README.md). 
 
 ## Recorder Usage
-Open a **terminal** and navigate to the `bio-feedback` root directory (I prefer the git-bash):
+Open a **terminal** and navigate to the `bio-feedback` root directory (I prefer the *Anaconda-Promt*):
 ```bash
 cd <PROJECT ROOT DIRECTORY>
 ```
@@ -23,10 +27,12 @@ conda activate bio-feedback
 
 Start the `bio-feedback` recorder with
 ```bash
-python examples/session/record.py
+python examples/session/recorder.py [-m] [-q]
 ```
 
-and follow the instructions (type `python examples/session/record.py -h` for help).
+where the optional flags (i) `-m` and (ii) `-q` allow to (i) view the captured data via a life-data monitor and (ii) to reduce the consoe-output of the measurement (quiet-mode).
+
+Via `python examples/session/recorder.py -h` a help-page is shown.
 
 You can always **stop** the measurement by pressing `Ctrl-C` or `ESC` (please press `ESC` before closing the monitor).
 
@@ -99,7 +105,7 @@ See the [youtube tutorial](https://www.youtube.com/watch?v=UVVUJTwvGnw).
 3) Start bothe the *OpenSignals (r)evolution* and *g.tech* Suit data acquisition by clicking on the **Record Button** in each application window.
 
 Each software will produce its own **output** file which can be loaded into our Framework.
-(This step needs to be done by hand at the moment, but can easily be implemented in the [recorder.py](../../examples/session/record.py) application.)
+(This step needs to be done by hand at the moment, but can easily be implemented in the [recorder.py](.py) application.)
 
 To **synchronize** the signals from both devices, some events need to be present in both data files.
 A simple way to this is to ask the participant to **perform several teeth-clenchings** at the beginning of the measurement.

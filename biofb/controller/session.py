@@ -1,5 +1,5 @@
 from biofb.io import Loadable
-from biofb.session import Sample, Controller
+from biofb.session import Sample
 from biofb.controller import Agent
 from numpy import ndarray
 import threading
@@ -107,6 +107,7 @@ class Session(Loadable):
 
     @agent.setter
     def agent(self, value: Agent):
+        from biofb.session import Controller
         self._agent = Controller.load(value)
 
     @property

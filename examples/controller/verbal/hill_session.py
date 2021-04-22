@@ -1,9 +1,10 @@
-from biofb.controller.verbal import HillAgent
-from biofb.controller.audio import AudioKeySession as KeySession
+from biofb.controller import HillAgent
+from biofb.controller import AudioKeySession as KeySession
+from biofb.session import Sample
 import yaml as yaml
 
 
-class DummySample(object):
+class DummySample(Sample):
     """ A dummy Sample object required by the KeystrokeSession """
     def __init__(self, *args, **kwargs):
         pass
