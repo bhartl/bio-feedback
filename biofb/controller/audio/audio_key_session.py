@@ -24,6 +24,8 @@ class AudioKeySession(KeySession):
                  delay: float = 1e-3,
                  timeout: float = 2.0,
                  convert_on_wave_error=True,
+                 sample_data=None,
+                 action_data=None,
                  **replay_kwargs
                  ):
         """
@@ -42,11 +44,16 @@ class AudioKeySession(KeySession):
         :param convert_on_wave_error: Recordings might be in the wrong format,
                                       the corresponding files will be reformatted if True,
                                       Exceptions will be raised otherwise.
+        :param sample_data: (Optional) Sample-data list which initializes the `data`-property of the sample instance,
+                            e.g. when loading from a file (defaults to None).
+        :param action_data: (Optional) Agent-data list which initializes the `action_data`-property of the agent
+                            instance, e.g. when loading from a file (defaults to None).
         :param replay_kwargs: Possible keyword arguments to be forwarded to `sa.play_buffer`, such as `sample_rate`.
         """
 
         KeySession.__init__(self, sample=sample, agent=agent, name=name,
-                            description=description, delay=delay, timeout=timeout)
+                            description=description, delay=delay, timeout=timeout,
+                            sample_data=sample_data, action_data=action_data)
 
         assert isinstance(self.agent, KeyAgent)
 

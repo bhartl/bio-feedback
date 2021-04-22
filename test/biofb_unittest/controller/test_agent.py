@@ -23,8 +23,9 @@ class TestAgent(unittest.TestCase):
         from biofb.controller import Agent
 
         # abstract method `action` needs to be specified:
-        with self.assertRaises(TypeError):
-            Agent()
+        with self.assertRaises(NotImplementedError):
+            agent = Agent()
+            agent.action(state=None)
 
     def test_construct(self):
         agent = self.TestAgent(name='Test Agent', description="Test Description on Agent.")

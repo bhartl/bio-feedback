@@ -47,10 +47,10 @@ class Controller(Loadable):
             assert isinstance(value, dict)
             specific_cls = value.pop('class')
             specific_kwargs = value.pop('kwargs', {})
-            if isinstance(specific_kwargs, str):
+            if specific_kwargs and isinstance(specific_kwargs, str):
                 specific_kwargs = eval(specific_kwargs)
 
-            if isinstance(specific_cls, str):
+            if specific_cls and isinstance(specific_cls, str):
                 specific_cls = locate(specific_cls)
 
             return specific_cls.load(dict(**value, **specific_kwargs))

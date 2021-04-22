@@ -202,7 +202,7 @@ class Transmitter(Loadable, metaclass=ABCMeta):
 
         :param value: the specification of the stream name/hostname/type (str)
         """
-        self._stream = value  # if value is not None else self.device['name']
+        self._stream = value  # if value_dict is not None else self.device['name']
 
     @property
     def verbose(self) -> bool:

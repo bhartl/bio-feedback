@@ -62,9 +62,9 @@ class Sample(Loadable):
     def filename(self, value: str):
         """ Filename for sample-data
 
-        :param value: filename of data-files. The value may contain wildcards for sample properties of
+        :param value: filename of data-files. The value_dict may contain wildcards for sample properties of
                       the form `<PROPERTY_OF_SAMPLE>` (such as `timestamp` or `acquisition_datetime`
-                      (capitalized !) and modify value with corresponding property values.
+                      (capitalized !) and modify value_dict with corresponding property values.
         """
 
         if isinstance(value, dict):
@@ -77,7 +77,7 @@ class Sample(Loadable):
 
             # try to check wildcards of the form `<PROPERTY_OF_SAMPLE>`
             # such as `timestamp` or `acquisition_datetime` (capitalized)
-            # and modify value with corresponding property values
+            # and modify value_dict with corresponding property values
             for p in [p for p in dir(self.__class__) if isinstance(getattr(self.__class__, p), property)]:
                 wildcard = f'<{p.upper()}>'
                 if wildcard in v:
@@ -175,7 +175,7 @@ class Sample(Loadable):
     @comments.setter
     def comments(self, value: (tuple, list, set)):
         if isinstance(value, dict):
-            value = Loadable.dict_to_list(value)
+            value = Sample.dict_to_list(value)
 
         self._comments = list(value) if not isinstance(value, str) else [value]
 
@@ -196,6 +196,10 @@ class Sample(Loadable):
 
     @data.setter
     def data(self, value: list):
+        if isinstance(value, dict):
+            key_order = [d.name for d in self.setup.devices]
+            value = Loadable.dict_to_list(value_dict=value, key_order=key_order)
+
         self._data = value
 
     def load_data(self):
@@ -263,13 +267,13 @@ class Sample(Loadable):
         # return only values, not time-stamps
         return [value for time, value in chunk_data]
 
-    def dump_data(self, filename=None, mode='w'):
+    def dump_data(self, filename=None, mode='w', key='sample.data'):
         if filename is None:
             filename = self.filename
 
         if isinstance(filename, str) and len(self.setup.devices) > 1:
             with h5py.File(filename, mode) as h5:
-                g = h5.create_group('data')
+                g = h5.create_group(key)
                 for data, device in zip(self.data, self.setup.devices):
                     dump_data = data if data.shape[0] > data.shape[1] else data.T
                     d = g.create_dataset(device.name, data=dump_data)

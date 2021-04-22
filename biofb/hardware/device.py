@@ -102,7 +102,7 @@ class Device(Loadable):
     def channels(self, value):
 
         if isinstance(value, dict):
-            value = Loadable.dict_to_list(value)
+            value = Device.dict_to_list(value)
 
         self._channels = [
             v if isinstance(v, Channel) else Channel.load(v)
@@ -190,12 +190,12 @@ class Device(Loadable):
         """ Load a Device instance based on a dict-like, loadable representation
 
         :param value: dict-like, loadable representation of a Device (dict, yaml-file, path to dict-like object).
-        :return: Either a new `Device` instance initialized from the `value` argument or
-                 `value` if `value` is already a Device instance
+        :return: Either a new `Device` instance initialized from the `value_dict` argument or
+                 `value_dict` if `value_dict` is already a Device instance
 
-        - If a **'class'** key-value pair is specified in the `value` argument, the devices-lookup-module
+        - If a **'class'** key-value_dict pair is specified in the `value_dict` argument, the devices-lookup-module
           (accessed via get_device_module) is searched for a proper Device class to load
-        - If a **'location'** key-value pair is specified in the `value` argument, it specifies the location
+        - If a **'location'** key-value_dict pair is specified in the `value_dict` argument, it specifies the location
           of the devices-lookup-module (in that way, new devices can be implemented outside of the `biofb` scope)
         """
         if isinstance(value, cls):
@@ -309,7 +309,7 @@ class Device(Loadable):
                 ax.set_xlabel(None)
 
         if plt is not None:
-            plt.legend()
+            # plt.legend()
 
             import warnings
             warnings.simplefilter("ignore", UserWarning)
@@ -331,13 +331,13 @@ class Device(Loadable):
         :param value: Receiver instance or tuple of (Receiver-type, kwargs)
 
         - The **device-configuration is updated** according to the Receiver stream_info
-          meta-data if an **'update_device'** key-value pair is provided in the kwargs
+          meta-data if an **'update_device'** key-value_dict pair is provided in the kwargs
           (or has been defined in the `load_data_kwargs` property during construction)
         - The **device-channel-configuration is updated** according to the Receiver stream_info
-          meta-data if an **'update_channels'** key-value pair is provided in the kwargs
+          meta-data if an **'update_channels'** key-value_dict pair is provided in the kwargs
           (or has been defined in the `load_data_kwargs` property during construction)
         - The **device-sampling_rate-configuration is updated** according to the Receiver stream_info
-          meta-data if an **'update_sampling_rate'** key-value pair is provided in the kwargs
+          meta-data if an **'update_sampling_rate'** key-value_dict pair is provided in the kwargs
           (or has been defined in the `load_data_kwargs` property during construction)
         """
         if value is None:

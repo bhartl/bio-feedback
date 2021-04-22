@@ -1,12 +1,11 @@
-from numpy import ndarray, asarray, nan
+from numpy import ndarray, nan
 from biofb.session import Controller
-from abc import ABCMeta, abstractmethod
 from time import time
 import os
 import h5py
 
 
-class Agent(Controller, metaclass=ABCMeta):
+class Agent(Controller):
     """ Pro-active `Controller`-`Agent` of a controller session `Sample`.
 
      Abstract ABCMeta class: `action` method needs to be specified.
@@ -52,15 +51,42 @@ class Agent(Controller, metaclass=ABCMeta):
     def __str__(self):
         return f"<Feedback-Agent: {self.name}>"
 
+    def to_dict(self):
+        dict_repr = super().to_dict()
+        dict_repr['class'] = '.'.join([self.get_module_name(), self.get_class_name()])
+        return dict_repr
+
     @property
     def action_data(self):
         return self._action_data
 
     @action_data.setter
     def action_data(self, value):
+        if not isinstance(value, list):
+            if isinstance(value, dict):
+                value = Agent.dict_to_list(value_dict=value)
+            else:
+                value = list(value)
+
+        for i in range(len(value)):
+            vi = value[i]
+
+            if isinstance(vi, dict):
+                timestamp = vi.pop('timestamp')
+
+                try:
+                    args = Agent.dict_to_list(value_dict=vi)
+
+                except:
+                    args = vi.values()
+
+                value[i] = (timestamp, *args)
+
+        self._action_data = value
+
+    def append_action_data(self, value):
         self._action_data.append((time(), value))
 
-    @abstractmethod
     def action(self, state: (dict, ndarray)) -> (ndarray, tuple, object, None):
         """ Proposed `action` of the `Controller`-`Agent` (according to its internal policy) based on the `state`
             of a `Sample` (i.e., bio-signals of a `Subject`) to achieve a desired outcome.
@@ -72,14 +98,14 @@ class Agent(Controller, metaclass=ABCMeta):
                  actual controller realization).
                  Also no action (None) can (should possibly) be taken.
         """
-        pass
+        raise NotImplementedError(f'{self.get_module_name()}.{self.get_class_name()}.action')
 
     def get_action(self, state):
         action = self.action(state)
-        self.action_data = action
+        self.append_action_data(action)
         return action
 
-    def dump_actions(self, filename, file_format=None, mode='w'):
+    def dump_actions(self, filename, file_format=None, mode='w', key='action_data'):
         if file_format is None:
             __, extension = os.path.splitext(filename)
             if extension.lower() in ('.h5', '.hdf5', '.h5py'):
@@ -92,8 +118,11 @@ class Agent(Controller, metaclass=ABCMeta):
                 raise NotImplementedError(f'file_format {file_format}')
 
         with h5py.File(filename, mode) as h5:
-            g = h5.create_group('actions')
+            g = h5.create_group(key)
             for i, (timestamp, action) in enumerate(self.action_data):
                 g[f'{i}/timestamp'] = timestamp
+
+                # store actions -- possibly None (ESC), otherwise (key, action_value) pairs
                 for j, action_value in enumerate(action if hasattr(action, '__iter__') else [action]):
-                    g[f'{i}/{j}'] = (action_value if action is not None else nan)
+                    # check, whether action_value is value_dict (if None in case of key '.' -> save np.nan)
+                    g[f'{i}/{j}'] = (action_value if action_value is not None else nan)

@@ -22,7 +22,7 @@ def ax_plot(ax, data, channels):
     :param channels: list of [channel-information] for each device,
                      each device specific channel-information is a list of [device-channel-info] dict.
                      Each channel specific device-channel-info dict contains
-                     (i) key-value pairs that are forwarded to the ax.plot function for each channel-data and
+                     (i) key-value_dict pairs that are forwarded to the ax.plot function for each channel-data and
                      (ii) an element 'dt_slice', specifying the number of data that are shown, `data[-dt_slice:]`
     """
     for device_ax, device_data, device_channels in zip(ax.T, data, channels):

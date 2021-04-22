@@ -1,14 +1,14 @@
 from biofb.io import Loadable
-from biofb.session import Sample
+from biofb.session import Sample, Controller
 from biofb.controller import Agent
-from numpy import ndarray, asarray
+from numpy import ndarray
 import threading
-from abc import ABCMeta, abstractmethod
 from time import sleep
 import os
+from pydoc import locate
 
 
-class Session(Loadable, metaclass=ABCMeta):
+class Session(Loadable):
     """ Controller Session: `Agent` interacting with a `Subject`'s `Sample` state.
 
      Abstract ABCMeta class: `step` method (defining how the `Agent`'s action is
@@ -19,6 +19,9 @@ class Session(Loadable, metaclass=ABCMeta):
     towards a desired outcome.
     """
 
+    SAMPLE_DATA_KEY = 'sample_data'
+    ACTION_DATA_KEY = 'action_data'
+
     def __init__(self,
                  sample: Sample,
                  agent: Agent,
@@ -26,6 +29,8 @@ class Session(Loadable, metaclass=ABCMeta):
                  description: str = "",
                  delay: float = 0.,
                  timeout: float = 2.,
+                 sample_data=None,
+                 action_data=None,
                  ):
         """Constructor of Feedback `Session`
 
@@ -35,6 +40,10 @@ class Session(Loadable, metaclass=ABCMeta):
         :param description: Comment about the session (str, defaults to "").
         :param delay: Delay between controller-loop cycle steps.
         :param timeout: Timeout for stopping controller-loop (if started as background thread).
+        :param sample_data: (Optional) Sample-data list which initializes the `data`-property of the sample instance,
+                            e.g. when loading from a file (defaults to None).
+        :param action_data: (Optional) Agent-data list which initializes the `action_data`-property of the agent
+                            instance, e.g. when loading from a file (defaults to None).
         """
 
         Loadable.__init__(self)
@@ -45,11 +54,19 @@ class Session(Loadable, metaclass=ABCMeta):
         self._description = None
         self.description = description
 
+        # load sample
         self._sample = None
         self.sample = sample
 
+        if sample_data is not None:
+            self.sample.data = sample_data
+
+        # load agent
         self._agent = None
         self.agent = agent
+
+        if action_data is not None:
+            self.agent.action_data = action_data
 
         self._done = False
         self.done = False
@@ -82,7 +99,7 @@ class Session(Loadable, metaclass=ABCMeta):
 
     @sample.setter
     def sample(self, value: Sample):
-        self._sample = value
+        self._sample = Sample.load(value)
 
     @property
     def agent(self) -> Agent:
@@ -90,7 +107,7 @@ class Session(Loadable, metaclass=ABCMeta):
 
     @agent.setter
     def agent(self, value: Agent):
-        self._agent = value
+        self._agent = Controller.load(value)
 
     @property
     def done(self) -> bool:
@@ -136,7 +153,6 @@ class Session(Loadable, metaclass=ABCMeta):
     def __str__(self):
         return f"<Session: {self.name}>"
 
-    @abstractmethod
     def step(self, action: (ndarray, tuple, object)) -> tuple:
         """ Apply `Controller` `action` to subject and get `Sample` response (next `state`)
 
@@ -146,7 +162,7 @@ class Session(Loadable, metaclass=ABCMeta):
                  `Sample`-state of the subject and
                  an info-dictionary about the current state (optional, defaults to None).
         """
-        pass
+        raise NotImplementedError(f'{self.get_module_name()}.{self.get_class_name()}.step')
 
     def run(self, data_monitor=None) -> None:
         """ Controller main loop.
@@ -218,6 +234,33 @@ class Session(Loadable, metaclass=ABCMeta):
 
         return
 
+    def to_dict(self):
+        dict_repr = super().to_dict()
+        dict_repr['class'] = '.'.join([self.get_module_name(), self.get_class_name()])
+        return dict_repr
+
+    @classmethod
+    def load(cls, value):
+
+        if not isinstance(value, (dict, cls)):
+            value = cls.load_dict_like(value)
+            return cls.load(value)
+
+        if isinstance(value, dict):
+
+            try:
+                session_cls = value.pop('class')
+                session_cls = locate(session_cls)
+            except KeyError:
+                session_cls = cls
+
+            if session_cls is not cls:
+                return session_cls.load(value)
+
+            return cls(**value)
+
+        return super().load(value)
+
     def dump(self, filename=None, file_format=None, exist_ok=True):
         if filename is None:
             filename = self.sample.filename
@@ -235,5 +278,6 @@ class Session(Loadable, metaclass=ABCMeta):
                 file_format = 'yml'
 
         super().dump(filename=filename, file_format=file_format, exist_ok=exist_ok)
-        self.sample.dump_data(mode='a')
-        self.agent.dump_actions(filename=self.sample.filename, mode='a')
+        self.sample.dump_data(mode='a', key=self.SAMPLE_DATA_KEY)
+        self.agent.dump_actions(filename=self.sample.filename, mode='a', key=self.ACTION_DATA_KEY)
+

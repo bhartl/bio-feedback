@@ -10,6 +10,6 @@ Extracting characteristic sounds, such as
 - the sound of a heartbeat,
 - etc.
 
-can be used by a controller to guide the bio-signal state of a participant towards a desired value. """
+can be used by a controller to guide the bio-signal state of a participant towards a desired value_dict. """
 
 from .audio_key_session import AudioKeySession

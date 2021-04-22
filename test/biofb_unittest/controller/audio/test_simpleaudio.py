@@ -27,7 +27,7 @@ class TestSimpleaudio(unittest.TestCase):
         # Generate a 440 Hz sine wave
         note = np.sin(frequency * t * 2. * np.pi)
 
-        # Ensure that highest value is in 16-bit range
+        # Ensure that highest value_dict is in 16-bit range
         audio = note * (2**15 - 1) / np.max(np.abs(note))
         # Convert to 16-bit data
         audio = audio.astype(np.int16)

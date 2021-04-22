@@ -4,6 +4,16 @@ from biofb.visualize import DataMonitor
 from examples.session.configure import *
 
 
+def safe_run_session(session, **kwargs):
+    try:
+        print(session.agent)
+        session.run(**kwargs)
+    finally:
+        session.stop()
+
+    return session
+
+
 def monitor_session(session, delta_time=5., lw=2., ):
 
     from examples.session.monitor import make_figure, ax_plot, ax_legend
@@ -51,20 +61,18 @@ def monitor_session(session, delta_time=5., lw=2., ):
                      style=None,
                      ) as dm:
 
-        try:
-            session.run(data_monitor=dm)
-        finally:
-            session.stop()
+        safe_run_session(session=session, data_monitor=dm)
 
         print('Session stopped, wait for monitor to close.')
 
 
-def perform_session(sample_path_pattern, setting, setup, subject, monitor_kwargs=()):
+def perform_session(sample_path_pattern, setting, setup, subject, monitor_kwargs=(), quiet=False):
 
     sample = new_sample(sample_path_pattern=sample_path_pattern,
                         setting=setting,
                         setup=setup,
-                        subject=subject)
+                        subject=subject,
+                        )
 
     _ = sample.state
 
@@ -89,10 +97,13 @@ def perform_session(sample_path_pattern, setting, setup, subject, monitor_kwargs
                               )
 
     try:
-        print(session.agent)
-        monitor_session(session=session, **dict(monitor_kwargs))
-    except KeyboardInterrupt:
-        print('Detected Keyboard interrupt.')
+        if not quiet:
+            monitor_session(session=session, **dict(monitor_kwargs))
+        else:
+            safe_run_session(session=session)
+
+    except Exception as ex:
+        print(f'Detected {ex.__class__.__name__}:', str(ex))
         save_data = input('Do you still want to save the data? (press y to save): y').strip().lower()
         if save_data in ('n', 'no'):
             raise
@@ -121,7 +132,8 @@ def main(sample_path_pattern='data/session/biofb/recording-<ACQUISITION_DATETIME
                        (defaults to 1., i.e. 1-sek chunks are received from the hardware. should not be too small,
                        otherwise the latency is too high).
     :param delta_time: Time-window in seconds for which the data of the session are shown.
-    :param quiet: Defaults to False, i.e. verbose operation.
+    :param quiet: Boolean defining whether signals should be monitored on the screen (defaults to False,
+                  i.e. verbose mode. If quiet is set, data will only be acquired but not shown).
     :param known_settings: path to KNOWN_SETTINGS csv file (defaults to data/session/db_meta_data/session.csv).
     :param known_locations: path to KNOWN_LOCATIONS csv file (defaults to data/session/db_meta_data/location.csv).
     :param known_controllers: path to KNOWN_CONTROLLERS csv file (defaults to data/session/db_meta_data/controller.csv).
@@ -174,7 +186,8 @@ def main(sample_path_pattern='data/session/biofb/recording-<ACQUISITION_DATETIME
                               setting=setting,
                               subject=subject,
                               setup=hardware_setup,
-                              monitor_kwargs={'delta_time': delta_time}
+                              monitor_kwargs={'delta_time': delta_time},
+                              quiet=quiet
                               )
     print('---')
     print()

@@ -220,6 +220,8 @@ def connect_to_devices(streams=DEFAULT_STREAMS, chunk_size=1./5., verbose=True, 
         stream_kwargs=stream_kwargs
     )
 
+    print('Connected.')
+
     return hardware_setup
 
 

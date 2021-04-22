@@ -6,8 +6,10 @@ class TestSession(unittest.TestCase):
 
     def setUp(self) -> None:
         from biofb.controller import Session
+        from biofb.controller import Agent
+        from biofb.session import Sample
 
-        class TSample():
+        class TSample(Sample):
             """ Test Sample whose state is an integer number, `i` """
             def __init__(self, i=0, imax=10):
                 self.i = 0
@@ -17,7 +19,7 @@ class TestSession(unittest.TestCase):
             def state(self):
                 return self.i
 
-        class TAgent():
+        class TAgent(Agent):
             """ Test Agent whose action is an integer increment `inc` but randomly positive or negative"""
             def __init__(self, inc=1):
                 self.inc = inc

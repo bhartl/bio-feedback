@@ -7,7 +7,7 @@ def find_peaks(x: np.ndarray, distinction_range: float = 0.75):
     """Finds peaks whose values are `>= distinction_range * (|mean - min|)` of the data)
 
     :param x: Data subjected to peak finding (array_like).
-    :param distinction_range: Distinction range which identifies peaks by (positive) value (float).
+    :param distinction_range: Distinction range which identifies peaks by (positive) value_dict (float).
     :return: Tuple of (list of probable peaks, list of possible peaks)
     """
 

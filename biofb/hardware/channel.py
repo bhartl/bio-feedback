@@ -53,7 +53,7 @@ class Channel(Loadable):
 
     @classmethod
     def load(cls, value):
-        """ Loads channel instance based on the `value` argument (`Channel` or `dict`).
+        """ Loads channel instance based on the `value_dict` argument (`Channel` or `dict`).
 
         If `name` attribute refers to a specific channel within the `biofb.hardware.channels` package,
         the respective special channel is loaded.
@@ -76,7 +76,7 @@ class Channel(Loadable):
             value = value.to_dict()
 
         else:
-            raise NotImplementedError(f'Don`t understand type `{type(value)}` of value `{value}`')
+            raise NotImplementedError(f'Don`t understand type `{type(value)}` of value_dict `{value}`')
 
         return channel_cls(**value)
 
@@ -114,7 +114,7 @@ class Channel(Loadable):
 
     @sampling_rate.setter
     def sampling_rate(self, value: int):
-        assert value > 0, f"Only positive sampling rates are allowed (provided `value`: {value})."
+        assert value > 0, f"Only positive sampling rates are allowed (provided `value_dict`: {value})."
         self._sampling_rate = value
 
     @property

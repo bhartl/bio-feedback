@@ -45,6 +45,12 @@ class Loadable(object):
 
         return dict_repr
 
+    def get_class_name(self):
+        return self.__class__.__name__
+
+    def get_module_name(self):
+        return self.__class__.__module__
+
     @classmethod
     def load(cls, value):
         """ Load Loadable instance based on dict-representation.
@@ -69,7 +75,7 @@ class Loadable(object):
                     return cls.load(value)
             except AssertionError:
 
-                # check, whether representation of dict or tuple has been passed via value
+                # check, whether representation of dict or tuple has been passed via value_dict
                 v = value
                 if isinstance(value, str):
                     try:
@@ -77,7 +83,7 @@ class Loadable(object):
                     except:
                         pass
 
-                    assert not isinstance(value, str), f"Did not understand value `{v}` to load {cls} instance."
+                    assert not isinstance(value, str), f"Did not understand value_dict `{v}` to load {cls} instance."
 
                 return cls.load(value)
 
@@ -103,7 +109,6 @@ class Loadable(object):
                 json.dump(sample_repr, outfile)
         elif file_format.lower() in ('hdf5', 'h5', 'h5py'):
             with h5py.File(filename, 'w') as h5:
-                sample_repr = {self.__class__.__name__: sample_repr}
                 Loadable.recursively_save_dict_contents_to_group(h5, '/', sample_repr)
         else:
             raise NotImplementedError(f'file_format {file_format}')
@@ -140,17 +145,41 @@ class Loadable(object):
         return {str(i): vi for i, vi in enumerate(list_instance)}
 
     @staticmethod
-    def dict_to_list(dict_instance):
-        integer_keyed = {int(k): v for k, v in dict_instance.items()}
-        return list(integer_keyed)
+    def dict_to_list(value_dict: dict, key_order=()):
+        """ Returns list of value_dict values, ordered by their keys.
+
+            :param value_dict: Dictionary, whose values are returned as list, according to the key_order parameter.
+            :param key_order: iterable, defining the order of the values in value_dict in the returned list
+                              of values.
+                              If no key_order is specified, the keys of the value_dict are converted to a list and
+                              sorted.
+                              E.g., potential integer keys of a dictionary {0: 'element 0', 1: 'element 1', ...}
+                              is converted to a list of ['element 0', 'element 1'], even if the keys are str
+                              representations of integer values.
+            """
+
+        if not key_order:
+
+            key_order = []
+
+            for k in value_dict.keys():
+                try:
+                    key_order.append(int(k))
+                except (TypeError, ValueError):
+                    key_order.append(k)
+
+            key_order = np.asarray(key_order)
+            return np.asarray([v for v in value_dict.values()])[key_order.argsort()].tolist()
+
+        return [value_dict[k] for k in key_order]
 
     @classmethod
     def load_dict_like(cls, value: (str, dict), index=None) -> dict:
-        """ Load dict-like object via provided value (path, yaml, json, repr, ...)
+        """ Load dict-like object via provided value_dict (path, yaml, json, repr, ...)
 
         :param value: Dict-like object or path to dict-like representation (path, yaml, json, repr, ...)
         :param index: (Optional) index of dict to load from list of dicts (e.g. form csv-file)
-        :return: Dictionary representation of value
+        :return: Dictionary representation of value_dict
         """
 
         if value is None:
@@ -162,7 +191,9 @@ class Loadable(object):
             loaded = value
 
         elif isinstance(value, str):
-            if os.path.exists(value):
+            if os.path.exists(value) or os.path.exists(os.path.abspath(value)):
+                value = os.path.abspath(value)
+
                 try:
                     loaded = json.loads(value)
                 except ValueError:
@@ -183,7 +214,7 @@ class Loadable(object):
                         except:
                             with h5py.File(value, 'r') as h5:
                                 loaded = Loadable.recursively_load_dict_contents_from_group(h5, '/')
-            else:
+            elif value:
                 try:
                     loaded = json.loads(value)
                 except ValueError:
@@ -191,6 +222,8 @@ class Loadable(object):
                         loaded = yaml.safe_load(value)
                     except Exception:
                         pass
+            else:
+                loaded = dict()
 
         else:
             try:
@@ -199,7 +232,7 @@ class Loadable(object):
                 pass
 
         assert isinstance(loaded, dict), f"Value must be either a dict-like object or a path to " \
-                                         f"dict-like file (yml, json). Did not understand `{value}` " \
+                                         f"dict-like file (yml, json, hd5f). Did not understand `{value}` " \
                                          f"of type `{type(value)}`."
 
         return loaded
@@ -212,7 +245,7 @@ class Loadable(object):
         ans = {}
         for key, item in h5[path].items():
             if isinstance(item, h5py._hl.dataset.Dataset):
-                ans[key] = item.value
+                ans[key] = item[()]  # access item.value
             elif isinstance(item, h5py._hl.group.Group):
                 ans[key] = Loadable.recursively_load_dict_contents_from_group(h5, path + key + '/')
         return ans
