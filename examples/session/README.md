@@ -73,7 +73,7 @@ As default setup we use the default channels configuration provided in the [`bio
 6) Channel 6 (*CH6*): **EMG**-Sensor (Electrocardiogram)
    with electrode-placement at the right-sided neck a few fingers apart (ref-electrode [item 9 below] placed on clavicula),
    see [Datasheet](../../doc/bioplux/sensors/Electromyography_(EMG)_Datasheet.pdf).
-7) Channel 7 (*CH7*): **BVP**-Sensor (Blood Pressure Volume) placed on the right index finger,
+7) Channel 7 (*CH7*): **BVP**-Sensor (Blood Pressure Volume) placed on the left index finger,
    see [Datasheet](../../doc/bioplux/sensors/Blood_Volume_Pulse_(BVP)_Datasheet.pdf).
 8) Channel 8 (*CH8*): **FSW**-Sensor (Footswitch) in RAW-input mode (could also be used as digital input, 
    but this usually controls parts of the data-acquisition and we want to use it to label events during the measurement). 
