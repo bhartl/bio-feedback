@@ -47,45 +47,11 @@ After the measurement a compressed **hdf5 output-file** (per default in the [`da
 
 ## Experiment Protocol
 
-### Sensor-Placement of the *biosignalsplux* hardware
-
-As default setup we use the default channels configuration provided in the [`biofb.hardware.devices.Bioplux` class](../../biofb/hardware/devices/bioplux.py) (cf. Figure [below](#third-party-data-acquisition)):
-1) Channel 1 (*CH1*): **EOG**-Sensor (Electrooculography) 
-   in **horizontal** configuration (black right, red left, white behind ear on *M1*-position),
-   see [User-Manual](../../doc/bioplux/sensors/Electrooculography_(EOG)_User_Manual.pdf)
-   and [Datasheet](../../doc/bioplux/sensors/Electrooculography_(EOG)_Datasheet.pdf).
-2) Channel 2 (*CH2*): **ECG**-Sensor (Electrocardiogram) 
-   in **lean 1 configuration** configuration (ref top, red in, black out; switching of red and black only changes sign), 
-   see [User-Manual](../../doc/bioplux/sensors/Electrocardiography_(ECG)_User_Manual.pdf)
-   and [Datasheet](../../doc/bioplux/sensors/Electrocardiography_(ECG)_Datasheet.pdf).
-3) Channel 3 (*CH3*): **PZT**-Sensor (Piezo-Electric Respiration); vertically placed between *ECG* reference and red/black electrodes,
-   see [User-Manual](../../doc/bioplux/sensors/Respiration_(PZT)_User_Manual.pdf)
-   and [Datasheet](../../doc/bioplux/sensors/Respiration_(PZT)_Datasheet.pdf).
-4) Channel 4 (*CH4*): **EEG**-Sensor (Electroencephalogram), fixed with black strap-band. 
-   Electrode placement at *FP1* (red, above left eye), *FP2* (black, above right eye) and *M1*-positions (behind left ear above EOG ref),
-   see [User-Manual](../../doc/bioplux/sensors/Electroencephalography_(EEG)_User_Manual.pdf)
-   and [Datasheet](../../doc/bioplux/sensors/Electroencephalography_(EEG)_Datasheet.pdf).
-5) Channel 5 (*CH5*): **EDA**-Sensor (Electrodermal Activity) 
-   with electrode-placement at fingers of right arm 
-   (red: inner side at the bottom third limb of the index finger, 
-   black: inner side at the bottom third limb of the middle finger),
-   see [Datasheet](../../doc/bioplux/sensors/Electrodermal_Activity_(EDA)_Datasheet.pdf).
-6) Channel 6 (*CH6*): **EMG**-Sensor (Electrocardiogram)
-   with electrode-placement at the right-sided neck a few fingers apart (ref-electrode [item 9 below] placed on clavicula),
-   see [Datasheet](../../doc/bioplux/sensors/Electromyography_(EMG)_Datasheet.pdf).
-7) Channel 7 (*CH7*): **BVP**-Sensor (Blood Pressure Volume) placed on the left index finger,
-   see [Datasheet](../../doc/bioplux/sensors/Blood_Volume_Pulse_(BVP)_Datasheet.pdf).
-8) Channel 8 (*CH8*): **FSW**-Sensor (Footswitch) in RAW-input mode (could also be used as digital input, 
-   but this usually controls parts of the data-acquisition and we want to use it to label events during the measurement). 
-9) Reference (Ground) (*CH2*): White sensor, connected with bottom left plug (down pointing arrow). 
-
-### Sensor-Placement of the *g.tech* Unicorn
-See the [youtube tutorial](https://www.youtube.com/watch?v=UVVUJTwvGnw).
 
 ### Third-Party Data Acquisition
 1) Start *OpenSignals (r)evolution*
    - connect (and configure) the *biosignalsplux* hardware.
-   - The routing of our first/default biosignalsplux measurements described [above](#sensor-placement-of-the-biosignalsplux-hardware) looks as follows:
+   - The routing of our first/default biosignalsplux measurements described [below](#sensor-placement-of-the-biosignalsplux-hardware) looks as follows:
      
      ![Sketch of bio-sensory hardware devices](../../doc/biofb/fig/biopux_routing.png "Used bio-sensory devices")
      
@@ -156,6 +122,64 @@ Via the LSL LAB Recorder -- a stand-alone Application -- data from different dev
 
 
 ## Measurement Protocol
+
+### Sensor-Placement of the *biosignalsplux* hardware
+
+As default setup we use the default channels configuration provided in the [`biofb.hardware.devices.Bioplux` class](../../biofb/hardware/devices/bioplux.py) (cf. Figure [below](#third-party-data-acquisition)):
+1) Channel 1 (*CH1*): **EOG**-Sensor (Electrooculography) 
+   in **horizontal** configuration (black right, red left, white behind ear on *M1*-position),
+   see [User-Manual](../../doc/bioplux/sensors/Electrooculography_(EOG)_User_Manual.pdf)
+   and [Datasheet](../../doc/bioplux/sensors/Electrooculography_(EOG)_Datasheet.pdf).
+      
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/EOG.svg "EOG Example Sensor Placement")
+
+2) Channel 2 (*CH2*): **ECG**-Sensor (Electrocardiogram) 
+   in **lean 1 configuration** configuration (ref top, red in, black out; switching of red and black only changes sign), 
+   see [User-Manual](../../doc/bioplux/sensors/Electrocardiography_(ECG)_User_Manual.pdf)
+   and [Datasheet](../../doc/bioplux/sensors/Electrocardiography_(ECG)_Datasheet.pdf).
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/ECG.svg "ECG Example Sensor Placement")
+
+3) Channel 3 (*CH3*): **PZT**-Sensor (Piezo-Electric Respiration); vertically placed between *ECG* reference and red/black electrodes,
+   see [User-Manual](../../doc/bioplux/sensors/Respiration_(PZT)_User_Manual.pdf)
+   and [Datasheet](../../doc/bioplux/sensors/Respiration_(PZT)_Datasheet.pdf).
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/RESP.svg "RESP Example Sensor Placement")
+
+4) Channel 4 (*CH4*): **EEG**-Sensor (Electroencephalogram), fixed with black strap-band. 
+   Electrode placement at *FP1* (red, above left eye), *FP2* (black, above right eye) and *M1*-positions (behind left ear above EOG ref),
+   see [User-Manual](../../doc/bioplux/sensors/Electroencephalography_(EEG)_User_Manual.pdf)
+   and [Datasheet](../../doc/bioplux/sensors/Electroencephalography_(EEG)_Datasheet.pdf).
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/EEG.svg "EEG Example Sensor Placement")
+
+5) Channel 5 (*CH5*): **EDA**-Sensor (Electrodermal Activity) 
+   with electrode-placement at fingers of right arm 
+   (red: inner side at the bottom third limb of the index finger, 
+   black: inner side at the bottom third limb of the middle finger),
+   see [Datasheet](../../doc/bioplux/sensors/Electrodermal_Activity_(EDA)_Datasheet.pdf).
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/EDA.svg "EDA Example Sensor Placement")
+
+6) Channel 6 (*CH6*): **EMG**-Sensor (Electrocardiogram)
+   with electrode-placement at the right-sided neck a few fingers apart (ref-electrode [item 9 below] placed on clavicula),
+   see [Datasheet](../../doc/bioplux/sensors/Electromyography_(EMG)_Datasheet.pdf).
+   **Reference** (*Ground*): White sensor, connected with bottom left plug (down pointing arrow).
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/EMG.svg "EMG Example Sensor Placement")
+
+7) Channel 7 (*CH7*): **BVP**-Sensor (Blood Pressure Volume) placed on the left index finger,
+   see [Datasheet](../../doc/bioplux/sensors/Blood_Volume_Pulse_(BVP)_Datasheet.pdf).
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/BVP.svg "BVP Example Sensor Placement")
+
+8) Channel 8 (*CH8*): **FSW**-Sensor (Footswitch) in RAW-input mode (could also be used as digital input, 
+   but this usually controls parts of the data-acquisition and we want to use it to label events during the measurement). 
+
+   ![Example bio-sensory hardware placement](../../doc/biofb/fig/bioplux-sensor-placement/FSW.svg "FSW Example Sensor Placement")
+
+### Sensor-Placement of the *g.tech* Unicorn
+See the [youtube tutorial](https://www.youtube.com/watch?v=UVVUJTwvGnw).
 
 ### Foot-Switch Protocol
 
